@@ -2,15 +2,15 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <name>roda-plugin-template</name>
-    <artifactId>roda-plugin-template</artifactId>
+    <name>Image Converter</name>
+    <artifactId>image-converter</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
     <repositories>
         <repository>
             <id>github</id>
             <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/keeps/roda</url>
+            <url>https://maven.pkg.github.com/ETERNA-earkiv/eterna</url>
         </repository>
     </repositories>
     <properties>
@@ -18,12 +18,12 @@
         <build.date>${maven.build.timestamp}</build.date>
         <maven.build.timestamp.format>yyyy-MM-dd</maven.build.timestamp.format>
         <java_version>17</java_version>
-        <RODA_PLUGIN>org.roda.core.plugins.external.ExamplePlugin</RODA_PLUGIN>
+        <RODA_PLUGIN>org.roda.core.plugins.external.ImageConverter</RODA_PLUGIN>
     </properties>
     <parent>
         <groupId>org.roda-project</groupId>
-        <artifactId>roda</artifactId>
-        <version>5.3.0</version>
+        <artifactId>eterna</artifactId>
+        <version>0.1.0</version>
     </parent>
     <build>
         <plugins>
@@ -88,6 +88,41 @@
             <groupId>org.roda-project</groupId>
             <artifactId>roda-core-tests</artifactId>
             <scope>test</scope>
+        </dependency>
+        <!-- TwelveMonkeys ImageIO dependencies -->
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-core</artifactId>
+            <version>3.12.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-jpeg</artifactId>
+            <version>3.12.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-tiff</artifactId>
+            <version>3.12.0</version>
+        </dependency>
+        <!-- Other format plugins -->
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-bmp</artifactId>
+            <version>3.12.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-webp</artifactId>
+            <version>3.12.0</version>
+        </dependency>
+
+        <!-- TwelveMonkeys Servlet support for Jakarta EE -->
+        <dependency>
+            <groupId>com.twelvemonkeys.servlet</groupId>
+            <artifactId>servlet</artifactId>
+            <version>3.12.0</version>
+            <classifier>jakarta</classifier>
         </dependency>
     </dependencies>
 </project>

@@ -17,7 +17,7 @@
       </includes>
       <useTransitiveDependencies>false</useTransitiveDependencies>
     </dependencySet>
-    <!-- Uncomment if there are dependencies
+    <!-- Uncomment if there are dependencies -->
     <dependencySet>
       <outputDirectory>/dependencies</outputDirectory>
       <excludes>
@@ -27,7 +27,7 @@
       <useProjectArtifact>false</useProjectArtifact>
       <useTransitiveFiltering>true</useTransitiveFiltering>
       <useTransitiveDependencies>true</useTransitiveDependencies>
-    </dependencySet> -->
+    </dependencySet>
   </dependencySets>
   <fileSets>
     <fileSet>
