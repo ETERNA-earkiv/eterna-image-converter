@@ -11,7 +11,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,10 +21,10 @@ import javax.imageio.ImageIO;
 import org.roda.core.RodaCoreFactory;
 import org.roda.core.common.FileFormatUtils;
 import org.roda.core.data.common.RodaConstants;
-import org.roda.core.data.common.RodaConstants.PreservationEventType;
+import org.roda.core.data.exceptions.InvalidParameterException;
 import org.roda.core.data.v2.IsRODAObject;
 import org.roda.core.data.v2.jobs.PluginParameter;
-import org.roda.core.data.v2.jobs.PluginType;
+import org.roda.core.data.v2.jobs.PluginParameter.PluginParameterType;
 import org.roda.core.data.v2.jobs.Report;
 import org.roda.core.index.IndexService;
 import org.roda.core.model.ModelService;
@@ -44,6 +43,8 @@ import org.slf4j.LoggerFactory;
 public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugin<T> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ImageConverter.class);
+
+  private static final String CONVERSION_PROFILE_PARAM_KEY = "parameter.conversion_profile";
 
   private static Map<String, PluginParameter> pluginParameters = new HashMap<>();
 
@@ -83,65 +84,135 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
     return new ImageConverter<T>();
   }
 
-  // @Override
-  // protected List<PluginParameter> orderParameters(Map<String, PluginParameter> params) {
-  //   List<PluginParameter> orderedList = new ArrayList<>();
-  //   if
-  //   orderedList.add(params.get(RodaConstants.PLUGIN_PARAMS_INPUT_FORMAT));
-  //   orderedList.add(params.get(RodaConstants.PLUGIN_PARAMS_OUTPUT_FORMAT));
-  //   if (params.containsKey(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP)) {
-  //     orderedList.add(params.get(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP));
-  //   }
-  //   if (params.containsKey(RodaConstants.PLUGIN_PARAMS_DISSEMINATION_TITLE)) {
-  //     orderedList.add(params.get(RodaConstants.PLUGIN_PARAMS_DISSEMINATION_TITLE));
-  //   }
-  //   if (params.containsKey(RodaConstants.PLUGIN_PARAMS_DISSEMINATION_DESCRIPTION)) {
-  //     orderedList.add(params.get(RodaConstants.PLUGIN_PARAMS_DISSEMINATION_DESCRIPTION));
-  //   }
-  //   if (params.containsKey(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_TYPE)) {
-  //     orderedList.add(params.get(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_TYPE));
-  //   }
-    
-  //   return orderedList;
-  // }
-
-  // @Override
-  // public List<PluginParameter> getParameters() {
-  //   Map<String, PluginParameter> parameters = getDefaultParameters();
-  //   return orderParameters(parameters);
-  // }
   @Override
   protected Map<String, PluginParameter> getDefaultParameters() {
+    // Start with parameters from the base class
     Map<String, PluginParameter> defaultParameters = super.getDefaultParameters();
+
+    // Remove parameters we don't want shown in the UI
+    defaultParameters.remove(RodaConstants.PLUGIN_PARAMS_INPUT_FORMAT);
+    defaultParameters.remove(RodaConstants.PLUGIN_PARAMS_OUTPUT_FORMAT);
+    defaultParameters.remove(RodaConstants.PLUGIN_PARAMS_IGNORE_OTHER_FILES);
+
+    // Add back any custom parameters defined ONLY in this class (if any)
     defaultParameters.putAll(pluginParameters.entrySet().stream()
-      .collect(Collectors.toMap(Map.Entry::getKey, e -> new PluginParameter(e.getValue()))));
+        .collect(Collectors.toMap(Map.Entry::getKey, e -> new PluginParameter(e.getValue()))));
+
+    // Ensure the essential REPRESENTATION_OR_DIP parameter is present (it should be
+    // from super)
+    if (!defaultParameters.containsKey(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP)) {
+      LOGGER.warn("REPRESENTATION_OR_DIP parameter missing from default parameters!");
+      // Optionally re-add it if needed, though it should come from
+      // AbstractConvertPlugin
+      defaultParameters.put(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP,
+          PluginParameter
+              .getBuilder(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP, "Outcome", PluginParameterType.CONVERSION)
+              .withDescription(
+                  "Select the desired output format profile for the conversion (Representation or Dissemination).")
+              .build());
+    } else {
+      // Optionally make the description more specific to this plugin
+      defaultParameters.get(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP).setDescription(
+          "Select the desired output image format profile (creates a Representation or Dissemination).");
+    }
+
     return defaultParameters;
   }
 
   @Override
   protected List<PluginParameter> orderParameters(Map<String, PluginParameter> params) {
-    List<PluginParameter> orderedList = super.orderParameters(params);
+    // Now order the *filtered* parameters
+    List<PluginParameter> orderedList = new ArrayList<>();
+
+    // Always show the Conversion Profile dropdown first
+    if (params.containsKey(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP)) {
+      orderedList.add(params.get(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP));
+    }
+
+    // Add DIP Title/Description *only if* DIP is selected (logic handled by UI
+    // based on parameter type)
+    if (params.containsKey(RodaConstants.PLUGIN_PARAMS_DISSEMINATION_TITLE)) {
+      orderedList.add(params.get(RodaConstants.PLUGIN_PARAMS_DISSEMINATION_TITLE));
+    }
+    if (params.containsKey(RodaConstants.PLUGIN_PARAMS_DISSEMINATION_DESCRIPTION)) {
+      orderedList.add(params.get(RodaConstants.PLUGIN_PARAMS_DISSEMINATION_DESCRIPTION));
+    }
+    // Note: REPRESENTATION_TYPE is usually handled internally by
+    // AbstractConvertPlugin
+
+    // Add any other parameters specific to ImageConverter (if any were defined)
+    for (String key : pluginParameters.keySet()) {
+      if (params.containsKey(key) && !orderedList.contains(params.get(key))) {
+        orderedList.add(params.get(key));
+      }
+    }
+
     return orderedList;
   }
 
   @Override
   public List<PluginParameter> getParameters() {
+    // This now returns the filtered and ordered list
     return this.orderParameters(this.getDefaultParameters());
   }
 
   @Override
+  public void setParameterValues(Map<String, String> parameters) throws InvalidParameterException {
+    String profileValue = parameters.get(CONVERSION_PROFILE_PARAM_KEY);
+    // Let the base class handle its parameters first (including
+    // REPRESENTATION_OR_DIP)
+    super.setParameterValues(parameters);
+    
+    // Now, explicitly get the conversion profile value
+    
+    if (profileValue != null && !profileValue.trim().isEmpty()) {
+      profileValue = profileValue.trim().toLowerCase();
+      parameters.put("parameter.option." + profileValue, "[parameter.output_format]");
+      parameters.put("parameter.output_format", profileValue);
+      LOGGER.debug("Setting output format from conversion profile parameter '{}': {}", CONVERSION_PROFILE_PARAM_KEY,
+          profileValue);
+      super.setOutputFormat(profileValue);
+    } else {
+      LOGGER.warn("Conversion profile parameter '{}' is missing or empty in the provided parameters.",
+          CONVERSION_PROFILE_PARAM_KEY);
+      if (super.getOutputFormat() == null || super.getOutputFormat().isEmpty()) {
+        throw new InvalidParameterException(
+            "Required conversion profile parameter '" + CONVERSION_PROFILE_PARAM_KEY + "' is missing.");
+      }
+    }
+  }
+
+  @Override
   public boolean areParameterValuesValid() {
-    return true;
+    // Validate based on the parameter *after* setParameterValues has run
+    Map<String, String> params = getParameterValues();
+
+    // Check if the base class successfully stored the rep/dip choice
+    boolean repDipSet = params.containsKey(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP)
+        && !params.get(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP).isEmpty();
+
+    // Check if the output format was successfully set
+    boolean outputFormatSet = super.getOutputFormat() != null && !super.getOutputFormat().isEmpty();
+
+    if (!repDipSet) {
+      LOGGER.error("Validation failed: REPRESENTATION_OR_DIP parameter is missing or empty.");
+    }
+    if (!outputFormatSet) {
+      LOGGER.error("Validation failed: Output format could not be determined (was {} parameter set correctly?).",
+          CONVERSION_PROFILE_PARAM_KEY);
+    }
+
+    return repDipSet && outputFormatSet;
   }
 
   @Override
   public Report beforeAllExecute(IndexService index, ModelService model, StorageService storage) {
-    return null;
+    return new Report();
   }
 
   @Override
   public Report afterAllExecute(IndexService index, ModelService model, StorageService storage) {
-    return null;
+    return new Report();
   }
 
   @Override
@@ -151,7 +222,8 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
 
   @Override
   public List<String> getConvertableTo() {
-    String outputFormats = RodaCoreFactory.getRodaConfigurationAsString("core", "tools", "image-converter", "outputFormats");
+    String outputFormats = RodaCoreFactory.getRodaConfigurationAsString("core", "tools", "image-converter",
+        "outputFormats");
     return Arrays.asList(outputFormats.split("\\s+"));
   }
 
@@ -170,9 +242,13 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
       throws UnsupportedOperationException, IOException, CommandException {
     LOGGER.info("Starting image conversion: {} -> {} ({})", inputPath, outputPath, fileFormat);
 
-    System.out.println("inputPath: " + inputPath);
-    System.out.println("outputPath: " + outputPath);
-    System.out.println("fileFormat: " + fileFormat);
+    String outputFormat = super.getOutputFormat();
+
+    if (outputFormat == null || outputFormat.trim().isEmpty()) {
+      throw new CommandException("Output format was not set correctly in the plugin parameters.");
+    }
+
+    LOGGER.info("Executing image conversion: {} -> {} (Output Format: {})", inputPath, outputPath, outputFormat);
 
     BufferedImage image = null;
     boolean success = false;
@@ -180,12 +256,14 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
       image = ImageIO.read(inputPath.toFile());
 
       if (image == null) {
-        throw new IOException("Could not read input image file: " + inputPath + ". Format might be unsupported or file is corrupted.");
+        throw new IOException(
+            "Could not read input image file: " + inputPath + ". Format might be unsupported or file is corrupted.");
       }
       success = ImageIO.write(image, fileFormat, outputPath.toFile());
 
       if (!success) {
-        throw new IOException("Could not write output image file: " + outputPath + ". Format '" + fileFormat + "' might be unsupported by available writers.");
+        throw new IOException("Could not write output image file: " + outputPath + ". Format '" + fileFormat
+            + "' might be unsupported by available writers.");
       }
 
       LOGGER.info("Successfully converted image to {}", outputPath);
