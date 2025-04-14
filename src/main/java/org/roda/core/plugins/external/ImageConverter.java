@@ -9,6 +9,7 @@ package org.roda.core.plugins.external;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -36,6 +37,12 @@ import org.roda.core.util.CommandException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.batik.transcoder.TranscoderInput;
+import org.apache.batik.transcoder.TranscoderOutput;
+import org.apache.batik.transcoder.image.PNGTranscoder;
+import org.apache.batik.transcoder.image.JPEGTranscoder;
+import org.apache.batik.transcoder.image.TIFFTranscoder;
+
 /**
  * Plugin for converting image formats using TwelveMonkeys ImageIO
  */
@@ -48,8 +55,17 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
 
   private static Map<String, PluginParameter> pluginParameters = new HashMap<>();
 
-  static {
+  private static final Map<String, org.apache.batik.transcoder.Transcoder> TRANSCODER_MAP = new HashMap<>();
 
+  static {
+    TRANSCODER_MAP.put("png", new PNGTranscoder());
+    
+    JPEGTranscoder jpegTranscoder = new JPEGTranscoder();
+    jpegTranscoder.addTranscodingHint(JPEGTranscoder.KEY_QUALITY, 0.95f);
+    TRANSCODER_MAP.put("jpg", jpegTranscoder);
+    TRANSCODER_MAP.put("jpeg", jpegTranscoder);
+    
+    TRANSCODER_MAP.put("tiff", new TIFFTranscoder());
   }
 
   public ImageConverter() {
@@ -70,7 +86,7 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
 
   @Override
   public String getDescription() {
-    return "Converts images from one format to another using TwelveMonkeys ImageIO";
+    return "Converts images between various formats using the TwelveMonkeys ImageIO library for extended format support.";
   }
 
   @Override
@@ -162,9 +178,7 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
     // Let the base class handle its parameters first (including
     // REPRESENTATION_OR_DIP)
     super.setParameterValues(parameters);
-    
-    // Now, explicitly get the conversion profile value
-    
+
     if (profileValue != null && !profileValue.trim().isEmpty()) {
       profileValue = profileValue.trim().toLowerCase();
       parameters.put("parameter.option." + profileValue, "[parameter.output_format]");
@@ -250,6 +264,12 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
 
     LOGGER.info("Executing image conversion: {} -> {} (Output Format: {})", inputPath, outputPath, outputFormat);
 
+    // Check if input is SVG
+    String inputLower = inputPath.toString().toLowerCase();
+    if (inputLower.endsWith(".svg") || inputLower.endsWith(".svgz")) {
+      return convertSvg(inputPath, outputPath, outputFormat);
+    }
+
     BufferedImage image = null;
     boolean success = false;
     try {
@@ -259,7 +279,7 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
         throw new IOException(
             "Could not read input image file: " + inputPath + ". Format might be unsupported or file is corrupted.");
       }
-      success = ImageIO.write(image, fileFormat, outputPath.toFile());
+      success = ImageIO.write(image, outputFormat, outputPath.toFile());
 
       if (!success) {
         throw new IOException("Could not write output image file: " + outputPath + ". Format '" + fileFormat
@@ -275,6 +295,33 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
     } catch (Exception e) {
       LOGGER.error("An unexpected error occurred during image conversion: {}", e.getMessage(), e);
       throw new IOException("Unexpected error during conversion: " + e.getMessage(), e);
+    }
+  }
+
+  private String convertSvg(java.nio.file.Path inputPath, java.nio.file.Path outputPath, String outputFormat) 
+      throws IOException, CommandException {
+    try {
+      // Get the appropriate transcoder
+      org.apache.batik.transcoder.Transcoder transcoder = TRANSCODER_MAP.get(outputFormat.toLowerCase());
+      if (transcoder == null) {
+        throw new CommandException("Unsupported output format for SVG conversion: " + outputFormat);
+      }
+
+      // Create transcoder input/output
+      String svgURI = inputPath.toUri().toURL().toString();
+      TranscoderInput input = new TranscoderInput(svgURI);
+      
+      try (OutputStream ostream = java.nio.file.Files.newOutputStream(outputPath)) {
+        TranscoderOutput output = new TranscoderOutput(ostream);
+        transcoder.transcode(input, output);
+      }
+
+      LOGGER.info("Successfully converted SVG to {}", outputPath);
+      return outputPath.toString();
+      
+    } catch (Exception e) {
+      LOGGER.error("SVG conversion failed: {}", e.getMessage(), e);
+      throw new IOException("Error converting SVG: " + e.getMessage(), e);
     }
   }
 }
