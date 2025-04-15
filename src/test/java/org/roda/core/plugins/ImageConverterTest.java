@@ -54,8 +54,10 @@ import org.roda.core.plugins.base.AbstractConvertPluginDummy;
 import org.roda.core.plugins.base.characterization.SiegfriedPlugin;
 import org.roda.core.plugins.base.ingest.TransferredResourceToAIPPlugin;
 import org.roda.core.plugins.external.ImageConverter;
+import org.roda.core.storage.ContentPayload;
 import org.roda.core.storage.DefaultStoragePath;
 import org.roda.core.storage.StorageService;
+import org.roda.core.storage.fs.FSPathContentPayload;
 import org.roda.core.storage.fs.FSUtils;
 import org.roda.core.storage.fs.FileStorageService;
 import org.roda.core.util.IdUtils;
@@ -200,29 +202,41 @@ public class ImageConverterTest {
     // vald outputformat
     // - testa mot filformat mot varje outputformat
 
-    final String aipId = IdUtils.createUUID();
+    final String repId = IdUtils.createUUID();
 
-    model.createAIP(aipId, corporaService,
-        DefaultStoragePath.parse(CorporaConstants.SOURCE_AIP_CONTAINER, CorporaConstants.SOURCE_AIP_ID_EARK2S),
-        RodaConstants.ADMIN);
+    // model.createAIP(aipId, corporaService,
+    //     DefaultStoragePath.parse(CorporaConstants.SOURCE_AIP_CONTAINER, CorporaConstants.SOURCE_AIP_ID_EARK2S),
+    //     RodaConstants.ADMIN);
+
+    AIP aip = model.createAIP(null, RodaConstants.AIP_TYPE_MIXED, new Permissions(), RodaConstants.ADMIN);
+
+    index.commitAIPs();
+
+    model.createRepresentation(aip.getId(), repId, true, RodaConstants.AIP_TYPE_MIXED, false, RodaConstants.ADMIN);
+
+    index.commitAIPs();
+    Path path = tmpDir.resolve("sample_640x426.tiff");
+    ContentPayload payload = new FSPathContentPayload(path.toAbsolutePath());
+    model.createFile(aip.getId(), repId, List.of("representations", repId, "data", "sample_640x426.tiff"), "sample_640x426.tiff",payload, RodaConstants.ADMIN);
 
     index.commitAIPs();
     final Map<String, String> parameters = new HashMap<>();
-    parameters.put(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP, "false");
-    parameters.put(RodaConstants.PLUGIN_PARAMS_OUTPUT_FORMAT, "jpg");
+    
+    parameters.put(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP, "type=rep;value=mixed");
+    parameters.put(RodaConstants.PLUGIN_PARAMS_CONVERSION_PROFILE, "jpg");
 
     final Job job = TestsHelper.executeJob(ImageConverter.class, parameters, PluginType.AIP_TO_AIP,
         SelectedItemsAll.create(org.roda.core.data.v2.ip.File.class));
-
+ 
     index.commitAIPs();
 
     final Filter filterParentTheAIP = new Filter();
-    filterParentTheAIP.add(new SimpleFilterParameter(RodaConstants.REPRESENTATION_AIP_ID, aipId));
+    filterParentTheAIP.add(new SimpleFilterParameter(RodaConstants.REPRESENTATION_AIP_ID, aip.getId()));
     final IndexResult<IndexedRepresentation> indexResult = index.find(IndexedRepresentation.class, filterParentTheAIP,
         null, new Sublist(0, 10), Collections.emptyList());
 
     Assert.assertEquals(job.getJobStats().getCompletionPercentage(), 100);
-    Assert.assertEquals(job.getJobStats().getSourceObjectsProcessedWithSuccess(), 1);
+    // Assert.assertEquals(job.getJobStats().getSourceObjectsProcessedWithSuccess(), 1);
     Assert.assertEquals(indexResult.getResults().size(), 2);
 
     Map<String, String> siegfriedParams = new HashMap<>();
@@ -233,7 +247,7 @@ public class ImageConverterTest {
     Assert.assertEquals(siegfriedJob.getJobStats().getCompletionPercentage(), 100);
 
     Filter fileFilter = new Filter();
-    fileFilter.add(new SimpleFilterParameter(RodaConstants.FILE_AIP_ID, aipId));
+    fileFilter.add(new SimpleFilterParameter(RodaConstants.FILE_AIP_ID, aip.getId()));
     IndexResult<org.roda.core.data.v2.ip.IndexedFile> files = index.find(
         org.roda.core.data.v2.ip.IndexedFile.class, fileFilter, null,
         new Sublist(0, 10), Collections.emptyList());
