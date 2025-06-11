@@ -10,14 +10,15 @@ package org.roda.core.plugins.external;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
+import javax.imageio.spi.IIORegistry;
 
 import org.roda.core.RodaCoreFactory;
 import org.roda.core.common.FileFormatUtils;
@@ -31,7 +32,7 @@ import org.roda.core.index.IndexService;
 import org.roda.core.model.ModelService;
 import org.roda.core.plugins.Plugin;
 import org.roda.core.plugins.PluginException;
-import org.roda.core.plugins.base.conversion.AbstractConvertPlugin;
+import org.roda.core.plugins.base.conversion.AbstractConvertPlugin2;
 import org.roda.core.storage.StorageService;
 import org.roda.core.util.CommandException;
 import org.slf4j.Logger;
@@ -47,25 +48,35 @@ import org.apache.batik.transcoder.image.TIFFTranscoder;
  * Plugin for converting image formats using TwelveMonkeys ImageIO
  */
 @SuppressWarnings("deprecation")
-public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugin<T> {
+public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugin2<T> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ImageConverter.class);
 
   private static final String CONVERSION_PROFILE_PARAM_KEY = "parameter.conversion_profile";
 
-  private static Map<String, PluginParameter> pluginParameters = new HashMap<>();
+  private static Map<String, PluginParameter> pluginParameters = new LinkedHashMap<>();
 
   private static final Map<String, org.apache.batik.transcoder.Transcoder> TRANSCODER_MAP = new HashMap<>();
 
   static {
     TRANSCODER_MAP.put("png", new PNGTranscoder());
-    
     JPEGTranscoder jpegTranscoder = new JPEGTranscoder();
     jpegTranscoder.addTranscodingHint(JPEGTranscoder.KEY_QUALITY, 0.95f);
     TRANSCODER_MAP.put("jpg", jpegTranscoder);
     TRANSCODER_MAP.put("jpeg", jpegTranscoder);
-    
     TRANSCODER_MAP.put("tiff", new TIFFTranscoder());
+
+    pluginParameters.put(RodaConstants.PLUGIN_PARAMS_IGNORE_OTHER_FILES,
+        new PluginParameter(RodaConstants.PLUGIN_PARAMS_IGNORE_OTHER_FILES, "Ignore other files",
+            PluginParameterType.BOOLEAN, "true", false, false,
+            "Do not process files that have a different format from the indicated."));
+
+    pluginParameters.put(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP,
+        PluginParameter.getBuilder(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP, "Outcome",
+            PluginParameterType.CONVERSION)
+            .withDescription(
+                "A conversion can create a representation or a dissemination. Please choose which option to output")
+            .build());
   }
 
   public ImageConverter() {
@@ -74,14 +85,40 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
 
   @Override
   public void init() throws PluginException {
+    System.out.println("ImageConverter init2");
     // Ensure ImageIO plugins are registered
     ImageIO.scanForPlugins();
+    IIORegistry registry = IIORegistry.getDefaultInstance();
+    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.xwd.XWDImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.bmp.CURImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.bmp.ICOImageReaderSpi());
+    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.iff.IFFImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.bmp.BMPImageReaderSpi());
+    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pict.PICTImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pnm.PAMImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.icns.ICNSImageReaderSpi());
+    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pntg.PNTGImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.hdr.HDRImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.tiff.TIFFImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.tga.TGAImageReaderSpi());
+    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.svg.SVGImageReaderSpi());
+    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.thumbsdb.ThumbsDBImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.sgi.SGIImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pnm.PNMImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pnm.PNMImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pcx.PCXImageReaderSpi());
+    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.dds.DDSImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.jpeg.JPEGImageReaderSpi());
+    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.wmf.WMFImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.tiff.BigTIFFImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.psd.PSDImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.dcx.DCXImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.dcx.DCXImageReaderSpi());
   }
 
   @Override
   public String getName() {
-    // Get from pom.xml <name>
-    return getClass().getPackage().getImplementationTitle();
+    return "Image Converter";
   }
 
   @Override
@@ -102,68 +139,12 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
 
   @Override
   protected Map<String, PluginParameter> getDefaultParameters() {
-    // Start with parameters from the base class
-    Map<String, PluginParameter> defaultParameters = super.getDefaultParameters();
-
-    // Remove parameters we don't want shown in the UI
-    defaultParameters.remove(RodaConstants.PLUGIN_PARAMS_INPUT_FORMAT);
-    defaultParameters.remove(RodaConstants.PLUGIN_PARAMS_OUTPUT_FORMAT);
-    defaultParameters.remove(RodaConstants.PLUGIN_PARAMS_IGNORE_OTHER_FILES);
-
-    // Add back any custom parameters defined ONLY in this class (if any)
-    defaultParameters.putAll(pluginParameters.entrySet().stream()
-        .collect(Collectors.toMap(Map.Entry::getKey, e -> new PluginParameter(e.getValue()))));
-
-    // Ensure the essential REPRESENTATION_OR_DIP parameter is present (it should be
-    // from super)
-    if (!defaultParameters.containsKey(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP)) {
-      LOGGER.warn("REPRESENTATION_OR_DIP parameter missing from default parameters!");
-      // Optionally re-add it if needed, though it should come from
-      // AbstractConvertPlugin
-      defaultParameters.put(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP,
-          PluginParameter
-              .getBuilder(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP, "Outcome", PluginParameterType.CONVERSION)
-              .withDescription(
-                  "Select the desired output format profile for the conversion (Representation or Dissemination).")
-              .build());
-    } else {
-      // Optionally make the description more specific to this plugin
-      defaultParameters.get(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP).setDescription(
-          "Select the desired output image format profile (creates a Representation or Dissemination).");
-    }
-
-    return defaultParameters;
-  }
-
-  @Override
-  protected List<PluginParameter> orderParameters(Map<String, PluginParameter> params) {
-    // Now order the *filtered* parameters
-    List<PluginParameter> orderedList = new ArrayList<>();
-
-    // Always show the Conversion Profile dropdown first
-    if (params.containsKey(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP)) {
-      orderedList.add(params.get(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP));
-    }
-
-    // Add DIP Title/Description *only if* DIP is selected (logic handled by UI
-    // based on parameter type)
-    if (params.containsKey(RodaConstants.PLUGIN_PARAMS_DISSEMINATION_TITLE)) {
-      orderedList.add(params.get(RodaConstants.PLUGIN_PARAMS_DISSEMINATION_TITLE));
-    }
-    if (params.containsKey(RodaConstants.PLUGIN_PARAMS_DISSEMINATION_DESCRIPTION)) {
-      orderedList.add(params.get(RodaConstants.PLUGIN_PARAMS_DISSEMINATION_DESCRIPTION));
-    }
-    // Note: REPRESENTATION_TYPE is usually handled internally by
-    // AbstractConvertPlugin
-
-    // Add any other parameters specific to ImageConverter (if any were defined)
-    for (String key : pluginParameters.keySet()) {
-      if (params.containsKey(key) && !orderedList.contains(params.get(key))) {
-        orderedList.add(params.get(key));
-      }
-    }
-
-    return orderedList;
+    return pluginParameters.entrySet().stream()
+        .collect(Collectors.toMap(
+            Map.Entry::getKey,
+            e -> new PluginParameter(e.getValue()),
+            (u, v) -> u,
+            LinkedHashMap::new));
   }
 
   @Override
@@ -173,27 +154,25 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
   }
 
   @Override
+  protected List<PluginParameter> orderParameters(Map<String, PluginParameter> params) {
+    return this.getDefaultParameters().values().stream().collect(Collectors.toList());
+  }
+
+  @Override
   public void setParameterValues(Map<String, String> parameters) throws InvalidParameterException {
     String profileValue = parameters.get(CONVERSION_PROFILE_PARAM_KEY);
-    // Let the base class handle its parameters first (including
-    // REPRESENTATION_OR_DIP)
-    super.setParameterValues(parameters);
-
-    if (profileValue != null && !profileValue.trim().isEmpty()) {
-      profileValue = profileValue.trim().toLowerCase();
-      parameters.put("parameter.option." + profileValue, "[parameter.output_format]");
-      parameters.put("parameter.output_format", profileValue);
-      LOGGER.debug("Setting output format from conversion profile parameter '{}': {}", CONVERSION_PROFILE_PARAM_KEY,
-          profileValue);
-      super.setOutputFormat(profileValue);
-    } else {
+    if (profileValue == null || profileValue.trim().isEmpty()) {
       LOGGER.warn("Conversion profile parameter '{}' is missing or empty in the provided parameters.",
           CONVERSION_PROFILE_PARAM_KEY);
-      if (super.getOutputFormat() == null || super.getOutputFormat().isEmpty()) {
-        throw new InvalidParameterException(
-            "Required conversion profile parameter '" + CONVERSION_PROFILE_PARAM_KEY + "' is missing.");
-      }
+      throw new InvalidParameterException(
+          "Required conversion profile parameter '" + CONVERSION_PROFILE_PARAM_KEY + "' is missing.");
     }
+    profileValue = profileValue.trim().toLowerCase();
+    parameters.put("parameter.option." + profileValue, "[parameter.output_format]");
+    parameters.put(RodaConstants.PLUGIN_PARAMS_OUTPUT_FORMAT, profileValue);
+    LOGGER.debug("Setting output format from conversion profile parameter '{}': {}", CONVERSION_PROFILE_PARAM_KEY,
+        profileValue);
+    super.setParameterValues(parameters);
   }
 
   @Override
@@ -282,7 +261,7 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
       success = ImageIO.write(image, outputFormat, outputPath.toFile());
 
       if (!success) {
-        throw new IOException("Could not write output image file: " + outputPath + ". Format '" + fileFormat
+        throw new IOException("Could not write output image file: " + outputPath + ". Format '" + outputFormat
             + "' might be unsupported by available writers.");
       }
 
@@ -298,7 +277,7 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
     }
   }
 
-  private String convertSvg(java.nio.file.Path inputPath, java.nio.file.Path outputPath, String outputFormat) 
+  private String convertSvg(java.nio.file.Path inputPath, java.nio.file.Path outputPath, String outputFormat)
       throws IOException, CommandException {
     try {
       // Get the appropriate transcoder
@@ -310,7 +289,7 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
       // Create transcoder input/output
       String svgURI = inputPath.toUri().toURL().toString();
       TranscoderInput input = new TranscoderInput(svgURI);
-      
+
       try (OutputStream ostream = java.nio.file.Files.newOutputStream(outputPath)) {
         TranscoderOutput output = new TranscoderOutput(ostream);
         transcoder.transcode(input, output);
@@ -318,7 +297,7 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
 
       LOGGER.info("Successfully converted SVG to {}", outputPath);
       return outputPath.toString();
-      
+
     } catch (Exception e) {
       LOGGER.error("SVG conversion failed: {}", e.getMessage(), e);
       throw new IOException("Error converting SVG: " + e.getMessage(), e);
