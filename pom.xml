@@ -153,6 +153,11 @@
             <artifactId>roda-core-tests</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.19.0</version>
+        </dependency>
         <!-- TwelveMonkeys ImageIO dependencies -->
         <dependency>
             <groupId>com.twelvemonkeys.imageio</groupId>
