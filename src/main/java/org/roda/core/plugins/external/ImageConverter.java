@@ -89,27 +89,24 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
     // Ensure ImageIO plugins are registered
     ImageIO.scanForPlugins();
     IIORegistry registry = IIORegistry.getDefaultInstance();
-    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.xwd.XWDImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.xwd.XWDImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.bmp.CURImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.bmp.ICOImageReaderSpi());
-    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.iff.IFFImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.bmp.BMPImageReaderSpi());
-    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pict.PICTImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pict.PICTImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pnm.PAMImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.icns.ICNSImageReaderSpi());
-    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pntg.PNTGImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.hdr.HDRImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.tiff.TIFFImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.tga.TGAImageReaderSpi());
-    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.svg.SVGImageReaderSpi());
-    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.thumbsdb.ThumbsDBImageReaderSpi());
+    // registry.registerServiceProvider(new
+    // com.twelvemonkeys.imageio.plugins.svg.SVGImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.sgi.SGIImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pnm.PNMImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pnm.PNMImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pcx.PCXImageReaderSpi());
-    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.dds.DDSImageReaderSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.dds.DDSImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.jpeg.JPEGImageReaderSpi());
-    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.wmf.WMFImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.tiff.BigTIFFImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.psd.PSDImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.dcx.DCXImageReaderSpi());
