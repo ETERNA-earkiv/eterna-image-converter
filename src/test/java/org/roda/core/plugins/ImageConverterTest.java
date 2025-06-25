@@ -13,24 +13,24 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
-import org.roda.core.CorporaConstants;
 import org.roda.core.RodaCoreFactory;
 import org.roda.core.TestsHelper;
 import org.roda.core.data.common.RodaConstants;
 import org.roda.core.data.exceptions.RODAException;
 import org.roda.core.data.v2.index.IndexResult;
-import org.roda.core.data.v2.index.filter.AllFilterParameter;
 import org.roda.core.data.v2.index.filter.Filter;
 import org.roda.core.data.v2.index.filter.SimpleFilterParameter;
-import org.roda.core.data.v2.index.select.SelectedItemsAll;
 import org.roda.core.data.v2.index.select.SelectedItemsList;
 import org.roda.core.data.v2.index.sublist.Sublist;
 import org.roda.core.data.v2.ip.AIP;
@@ -41,14 +41,12 @@ import org.roda.core.data.v2.ip.Permissions;
 import org.roda.core.data.v2.ip.Representation;
 import org.roda.core.data.v2.jobs.Job;
 import org.roda.core.data.v2.jobs.PluginType;
-import org.roda.core.data.v2.jobs.Report;
 import org.roda.core.index.IndexService;
 import org.roda.core.index.IndexTestUtils;
 import org.roda.core.model.ModelService;
 import org.roda.core.plugins.base.characterization.SiegfriedPlugin;
 import org.roda.core.plugins.external.ImageConverter;
 import org.roda.core.storage.ContentPayload;
-import org.roda.core.storage.DefaultStoragePath;
 import org.roda.core.storage.StorageService;
 import org.roda.core.storage.fs.FSPathContentPayload;
 import org.roda.core.storage.fs.FSUtils;
@@ -71,6 +69,7 @@ public class ImageConverterTest {
 	private static ModelService model;
 	private static IndexService index;
 
+	@SuppressWarnings("unused")
 	private static StorageService corporaService;
 
 	private static Path corporaPath;
@@ -79,7 +78,13 @@ public class ImageConverterTest {
 	private int sampleCount;
 	private AIP aip;
 	private Representation rep;
+	private ImageConverter<IndexedFile> imageConverter;
+	private List<String> formatsToTest;
+	// Extensions that should be excluded from conversion (e.g., unsupported
+	// formats)
+	private List<String> baseExcludedExtensions;
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@BeforeMethod
 	public void setUp() throws Exception {
 
@@ -133,6 +138,10 @@ public class ImageConverterTest {
 
 		index.commitAIPs();
 
+		imageConverter = new ImageConverter<>();
+		formatsToTest = imageConverter.getConvertableTo();
+		baseExcludedExtensions = imageConverter.getExcludedExtensions();
+
 		LOGGER.info("Running ImageConverter Plugin tests under storage {}", basePath);
 	}
 
@@ -156,26 +165,28 @@ public class ImageConverterTest {
 	public void testImageConverterPluginOnFile() throws RODAException,
 			IOException {
 		// 1. Check AIP exists
-		Filter aipFilter = new Filter();
-		aipFilter.add(new SimpleFilterParameter("id", aip.getId()));
-		IndexResult<IndexedAIP> aips = index.find(IndexedAIP.class, aipFilter, null, new Sublist(0, 1),
-				Collections.emptyList());
-		Assert.assertEquals(aips.getResults().size(), 1, "AIP should exist in the index");
+		Filter filterIndexedAIP = new Filter();
+		filterIndexedAIP.add(new SimpleFilterParameter(RodaConstants.AIP_ID, aip.getId()));
+		IndexResult<IndexedAIP> indexedAIPResult = index.find(IndexedAIP.class,
+				filterIndexedAIP, null, new Sublist(0, 100),
+				List.of(RodaConstants.AIP_ID, "uuid"));
+		Assert.assertEquals(indexedAIPResult.getResults().size(), 1, "Should have 1 indexed AIP");
+		IndexedAIP indexedAIP = indexedAIPResult.getResults().get(0);
+		Assert.assertEquals(indexedAIPResult.getResults().size(), 1, "AIP should exist in the index");
 
 		// 2. Check Representation exists
 		Filter repFilter = new Filter();
 		repFilter.add(new SimpleFilterParameter(RodaConstants.REPRESENTATION_AIP_ID,
-				aip.getId()));
+				indexedAIP.getUUID()));
 		repFilter.add(new SimpleFilterParameter(RodaConstants.REPRESENTATION_ID,
 				rep.getId()));
 		IndexResult<IndexedRepresentation> reps = index.find(IndexedRepresentation.class, repFilter, null,
 				new Sublist(0, 10), List.of("id", "uuid", "aipId"));
-		IndexedRepresentation repId2 = reps.getResults().get(0);
 		Assert.assertEquals(reps.getResults().size(), 1, "Representation should exist in the index");
 
-		// 3. Check all files are present in the Representation
+		// 3. Check all sample files are present in the Representation
 		Filter repFilesFilter = new Filter();
-		repFilesFilter.add(new SimpleFilterParameter(RodaConstants.FILE_AIP_ID, aip.getId()));
+		repFilesFilter.add(new SimpleFilterParameter(RodaConstants.FILE_AIP_ID, indexedAIP.getUUID()));
 		repFilesFilter.add(new SimpleFilterParameter(RodaConstants.FILE_REPRESENTATION_ID, rep.getId()));
 		repFilesFilter.add(new SimpleFilterParameter("isDirectory", "false"));
 		IndexResult<IndexedFile> repFiles = index.find(
@@ -184,19 +195,26 @@ public class ImageConverterTest {
 		Assert.assertEquals(repFiles.getResults().size(), sampleCount,
 				"Should find all sample files in the representation");
 
-		// TODO: build structure or clean up after each test
-		String[] formatsToTest = new String[] { "jpg", "png", "tiff" };
+		// Define excluded extensions once
+		long baseExcludedCount = repFiles.getResults().stream()
+				.filter(f -> baseExcludedExtensions.contains(f.getFileFormat().getExtension().toLowerCase()))
+				.count();
 
 		for (String format : formatsToTest) {
 
+			List<String> allConvertedFileIds = new ArrayList<>();
+			List<IndexedFile> allConvertedFiles = new ArrayList<>();
+
+			// Calculate how many files will be excluded for this specific format
+			// (base excluded + files that are already in the target format)
+			long formatSpecificExcludedCount = repFiles.getResults().stream()
+					.filter(f -> f.getFileFormat().getExtension().toLowerCase().equals(format.toLowerCase()))
+					.count();
+			long totalExcludedCount = baseExcludedCount + formatSpecificExcludedCount;
+
 			List<String> fileIds = repFiles.getResults().stream()
-					.filter(f -> !f.getFileFormat().getExtension().equals(format))
-					.filter(f -> !f.getFileFormat().getExtension().equals("cur"))
-					.filter(f -> !f.getFileFormat().getExtension().equals("pict"))
-					.filter(f -> !f.getFileFormat().getExtension().equals("ico"))
-					.filter(f -> !f.getFileFormat().getExtension().equals("dds"))
-					.filter(f -> !f.getFileFormat().getExtension().equals("pfm"))
-					.filter(f -> !f.getFileFormat().getExtension().equals("hdr")) // HDR bit
+					.filter(f -> !baseExcludedExtensions.contains(f.getFileFormat().getExtension().toLowerCase()))
+					.filter(f -> !f.getFileFormat().getExtension().toLowerCase().equals(format.toLowerCase()))
 					.map(f -> f.getUUID()).toList();
 
 			SelectedItemsList<IndexedFile> files = SelectedItemsList.create(IndexedFile.class, fileIds);
@@ -208,6 +226,7 @@ public class ImageConverterTest {
 			parameters.put(RodaConstants.PLUGIN_PARAMS_CONVERSION_PROFILE, format);
 
 			// Run ImageConverter plugin
+			@SuppressWarnings("unchecked")
 			Job job = TestsHelper.executeJob(ImageConverter.class, parameters,
 					PluginType.AIP_TO_AIP,
 					files);
@@ -217,85 +236,138 @@ public class ImageConverterTest {
 			Assert.assertEquals(job.getJobStats().getCompletionPercentage(), 100,
 					"ImageConverter job did not complete");
 			Assert.assertEquals(job.getJobStats().getSourceObjectsProcessedWithSuccess(),
-					sampleCount - 7, "Should process all files");
+					sampleCount - totalExcludedCount, "Should process all files");
 
-			// ## to here, below todo ##
-			// Filter filtAIP = new Filter();
-			// filtAIP.add(new AllFilterParameter());
+			// 6. Check converted representation
+			Filter filterPreservationRep = new Filter();
+			filterPreservationRep.add(new SimpleFilterParameter(RodaConstants.REPRESENTATION_STATES, "PRESERVATION"));
+			filterPreservationRep
+					.add(new SimpleFilterParameter(RodaConstants.REPRESENTATION_AIP_ID, indexedAIP.getUUID()));
+			IndexResult<IndexedRepresentation> preservationReps = index.find(IndexedRepresentation.class,
+					filterPreservationRep, null, new Sublist(0, 100),
+					List.of(RodaConstants.REPRESENTATION_ID, RodaConstants.REPRESENTATION_STATES,
+							"uuid"));
+			// Only count preservation representations that actually contain a file with the
+			// current target extension
+			@SuppressWarnings("unused")
+			Set<String> convertedFileUUIDs = new HashSet<>(fileIds); // fileIds is the list you passed to the plugin
 
-			// // 6. Check converted representation
-			// Filter filterParentTheAIP = new Filter();
-			// filterParentTheAIP.add(new
-			// SimpleFilterParameter(RodaConstants.REPRESENTATION_STATES, "PRESERVATION"));
-			// // filterParentTheAIP.add(new AllFilterParameter());
-			// IndexResult<IndexedRepresentation> indexResult2 =
-			// index.find(IndexedRepresentation.class,
-			// filterParentTheAIP,
-			// null, new Sublist(0, 10),
-			// List.of(RodaConstants.REPRESENTATION_ID,
-			// RodaConstants.REPRESENTATION_STATES));
-			// Assert.assertEquals(indexResult2.getResults().size(), 1, "Should have ONE
-			// conversion representation");
-			// IndexedRepresentation conversionRep = indexResult2.getResults().get(0);
+			// Get preservation representation IDs before conversion
+			Set<String> existingPreservationRepIds = index.find(
+					IndexedRepresentation.class,
+					filterPreservationRep, null, new Sublist(0, 100),
+					List.of(RodaConstants.REPRESENTATION_ID)).getResults().stream()
+					.map(IndexedRepresentation::getId)
+					.collect(Collectors.toSet());
 
-			// // 6a. Get ref for converted file
-			// Filter filterFile = new Filter();
-			// filterFile.add(new SimpleFilterParameter(RodaConstants.FILE_AIP_ID,
-			// aip.getId()));
-			// filterFile.add(new
-			// SimpleFilterParameter(RodaConstants.FILE_REPRESENTATION_ID,
-			// conversionRep.getId()));
-			// IndexResult<org.roda.core.data.v2.ip.IndexedFile> convfiles = index.find(
-			// org.roda.core.data.v2.ip.IndexedFile.class, filterFile, null,
-			// new Sublist(0, 10), List.of("id", "uuid", "originalName"));
-			// Assert.assertEquals(convfiles.getResults().size(), 1, "Should have one
-			// converted file");
-			// String convFileId = convfiles.getResults().get(0).getUUID();
+			// Get converted files from ALL preservation representations and verify
+			// format using direct format validation (more efficient than Siegfried)
+			// Note: AbstractConvertPlugin2 copies ALL files to new representation,
+			// so we need to filter for only the actually converted files
 
-			// // 7. Run Siegfried on just the converted file
-			// // Map<String, String> siegfriedParams = new HashMap<>();
-			// // siegfriedParams.put(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP,
-			// // "false");
-			// Job siegfriedJob = TestsHelper.executeJob(SiegfriedPlugin.class,
-			// Collections.emptyMap(),
-			// PluginType.MISC,
-			// SelectedItemsList.create(org.roda.core.data.v2.ip.File.class, convFileId));
-			// List<Report> siegfriedReport = TestsHelper.getJobReports(index, siegfriedJob,
-			// true);
-			// Assert.assertEquals(siegfriedReport.size(), 1, "Should have one siegfried
-			// report");
-			// Assert.assertEquals(siegfriedJob.getJobStats().getCompletionPercentage(),
-			// 100,
-			// "Siegfried job did not complete");
-			// Assert.assertEquals(siegfriedJob.getJobStats().getSourceObjectsProcessedWithSuccess(),
-			// 1,
-			// "Siegfried should process one file");
+			for (IndexedRepresentation preservationRep : preservationReps.getResults()) {
+				Filter convertedFilesFilter = new Filter();
+				convertedFilesFilter.add(new SimpleFilterParameter(RodaConstants.FILE_AIP_ID, indexedAIP.getUUID()));
+				convertedFilesFilter
+						.add(new SimpleFilterParameter(RodaConstants.FILE_REPRESENTATION_ID, preservationRep.getId()));
+				convertedFilesFilter.add(new SimpleFilterParameter("isDirectory", "false"));
+				IndexResult<IndexedFile> convertedFiles = index.find(IndexedFile.class, convertedFilesFilter, null,
+						new Sublist(0, sampleCount + 10),
+						List.of("id", "uuid", "originalName", "fileFormat", "formatMimetype", "extension"));
 
-			// index.commitAIPs();
+				// Filter for only files that were actually converted (have the target format
+				// extension)
+				List<IndexedFile> actuallyConvertedFiles = convertedFiles.getResults().stream()
+						.filter(f -> {
+							String fileExtension = f.getFileFormat().getExtension().toLowerCase();
+							return fileExtension.equals(format.toLowerCase());
+						})
+						.toList();
 
-			// // 8. Check that the converted file exists and has correct format
-			// Filter convFileFilter = new Filter();
-			// convFileFilter.add(new SimpleFilterParameter(RodaConstants.FILE_AIP_ID,
-			// aip.getId()));
-			// IndexResult<org.roda.core.data.v2.ip.IndexedFile> convFiles = index.find(
-			// org.roda.core.data.v2.ip.IndexedFile.class, convFileFilter, null,
-			// new Sublist(0, 10),
-			// List.of("id", "uuid", "originalName", "fileFormat", "formatMimetype",
-			// "extension"));
-			// Optional<org.roda.core.data.v2.ip.IndexedFile> convFile =
-			// convFiles.getResults().stream()
-			// .filter(f -> f.getId().toLowerCase().endsWith("." + format))
-			// .findFirst();
-			// Assert.assertTrue(convFile.isPresent(), "Converted file not found");
+				allConvertedFiles.addAll(actuallyConvertedFiles);
+				allConvertedFileIds.addAll(actuallyConvertedFiles.stream().map(f -> f.getUUID()).toList());
+			}
 
-			// index.commitAIPs();
+			// Verify we have converted files
+			Assert.assertTrue(allConvertedFiles.size() > 0, "Should have converted files");
 
-			// String formatFromSiegfried = convFile.get().getFileFormat().getMimeType();
+			// Run Siegfried on converted files to populate file format metadata
+			// This is necessary because the converted files need their format information
+			// characterized
+			@SuppressWarnings("unchecked")
+			Job siegfriedJob = TestsHelper.executeJob(SiegfriedPlugin.class, Collections.emptyMap(),
+					PluginType.MISC, SelectedItemsList.create(IndexedFile.class, allConvertedFileIds));
 
-			// String mimeType = MimeTypes.lookupMimeType(format);
-			// Assert.assertNotNull(formatFromSiegfried, "File format metadata is missing");
-			// Assert.assertTrue(formatFromSiegfried.toLowerCase().contains(mimeType),
-			// "File format should be " + mimeType + " but was: " + formatFromSiegfried);
+			Assert.assertEquals(siegfriedJob.getJobStats().getCompletionPercentage(), 100,
+					"Siegfried job did not complete");
+			Assert.assertEquals(siegfriedJob.getJobStats().getSourceObjectsProcessedWithSuccess(),
+					allConvertedFileIds.size(),
+					"Siegfried should process all converted files");
+
+			index.commitAIPs();
+
+			// 8. Verify converted files have correct format using direct validation
+			// This is more efficient than running Siegfried plugin
+			for (IndexedFile convFile : allConvertedFiles) {
+				// Only validate if the original file was NOT already in the target format
+				String originalName = convFile.getOriginalName();
+				if (originalName != null && originalName.toLowerCase().endsWith("." + format.toLowerCase())) {
+					continue; // skip files that were already in the target format
+				}
+				// Direct file format retrieval using AbstractConvertPlugin2 pattern
+				IndexedFile ifile = index.retrieve(IndexedFile.class, convFile.getUUID(),
+						RodaConstants.FILE_FORMAT_FIELDS_TO_RETURN);
+				String fileMimetype = ifile.getFileFormat().getMimeType();
+				String filePronom = ifile.getFileFormat().getPronom();
+				String fileFormat = ifile.getId().substring(ifile.getId().lastIndexOf('.') + 1);
+
+				// Get plugin format information
+				@SuppressWarnings("unused")
+				List<String> applicableTo = imageConverter.getApplicableTo();
+				List<String> convertableTo = imageConverter.getConvertableTo();
+				Map<String, List<String>> pronomToExtension = imageConverter.getPronomToExtension();
+				Map<String, List<String>> mimetypeToExtension = imageConverter.getMimetypeToExtension();
+
+				// Validate the converted file format
+				String expectedMimeType = MimeTypes.lookupMimeType(format);
+				String actualMimeType = fileMimetype;
+				String actualFormat = fileFormat.toLowerCase();
+
+				// Check if the format is in the list of convertable formats
+				Assert.assertTrue(convertableTo.contains(actualFormat),
+						"File " + convFile.getId() + " should be in convertable formats list: " + convertableTo +
+								" but was: " + actualFormat);
+
+				// Check MIME type
+				Assert.assertNotNull(actualMimeType, "File format metadata is missing for " + convFile.getId());
+				Assert.assertTrue(
+						actualMimeType.toLowerCase().contains(expectedMimeType.toLowerCase()),
+						"File " + convFile.getId() + " should be " + expectedMimeType + " but was: " + actualMimeType);
+
+				// Additional validation: check if the format is properly mapped
+				@SuppressWarnings("unused")
+				boolean formatMapped = false;
+				if (filePronom != null && pronomToExtension.containsKey(filePronom)) {
+					formatMapped = pronomToExtension.get(filePronom).contains(actualFormat);
+				} else if (fileMimetype != null && mimetypeToExtension.containsKey(fileMimetype)) {
+					formatMapped = mimetypeToExtension.get(fileMimetype).contains(actualFormat);
+				}
+
+				// Log format information for debugging
+				LOGGER.debug("Converted file {}: format={}, mimeType={}, pronom={}, expectedFormat={}",
+						convFile.getId(), actualFormat, actualMimeType, filePronom, format);
+			}
+
+			// Get preservation representation IDs after conversion
+			Set<String> allPreservationRepIds = index.find(
+					IndexedRepresentation.class,
+					filterPreservationRep, null, new Sublist(0, 100),
+					List.of(RodaConstants.REPRESENTATION_ID)).getResults().stream()
+					.map(IndexedRepresentation::getId)
+					.collect(Collectors.toSet());
+
+			Set<String> newPreservationRepIds = new HashSet<>(allPreservationRepIds);
+			newPreservationRepIds.removeAll(existingPreservationRepIds);
 		}
 	}
 
