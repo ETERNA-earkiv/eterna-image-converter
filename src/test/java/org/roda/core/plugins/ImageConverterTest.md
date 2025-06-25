@@ -9,7 +9,7 @@ This test verifies the functionality of the `ImageConverter` plugin in the ETERN
 - **AIP and Representation Creation:**
   - The test creates an Archival Information Package (AIP) and a representation containing all sample files from the test corpus.
 - **File Ingestion:**
-  - All files from the test corpus (with the same base name but different extensions) are ingested into the representation.
+  - All files from the test corpus are ingested into the representation.
 - **Conversion for Each Supported Format:**
   - For each supported output format (as reported by the plugin), the test:
     - Excludes files that are already in the target format or are in a list of known unsupported formats.
