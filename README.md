@@ -26,7 +26,13 @@ A plugin for [ETERNA](https://github.com/ETERNA-earkiv/ETERNA) providing robust 
   - Most common raster image formats supported by Java ImageIO and TwelveMonkeys (e.g., BMP, PNG, TIFF, JPEG, GIF, PNM, PSD, etc.)
   - **SVG input is supported** and converted using Apache Batik (to PNG, JPG, or TIFF)
 - **Output:**
-  - `jpg`, `jpeg`, `png`, `tiff` (as per plugin configuration and `TRANSCODER_MAP`)
+  - `jpg`, `png`, `tiff`
+
+### Output Format Quality Characteristics
+
+- **JPG**: Lossy compression format ideal for photographs and complex images where some quality loss is acceptable for smaller file sizes. Not recommended for archival of images where quality is paramount.
+- **PNG**: Lossless compression format well-suited for images with sharp lines, text, and graphics. It preserves image quality during compression and is a good choice for archival of digital art, logos, and screenshots.
+- **TIFF**: A flexible image format that can store images with lossless compression (or no compression at all). It is ideal for archival purposes because it preserves maximum image quality and supports metadata. Results in larger file sizes.
 
 ## Features (v1.0.0)
 
@@ -34,8 +40,6 @@ A plugin for [ETERNA](https://github.com/ETERNA-earkiv/ETERNA) providing robust 
 - **SVG conversion**: Converts SVG and SVGZ images to supported raster formats using Batik.
 - **Automatic format detection**: Uses ImageIO for input detection and Siegfried for post-conversion format validation.
 - **Preservation representation creation**: Each conversion creates a new representation for the converted files.
-- **Configurable exclusion logic**: Skips files that are already in the target format or are in a configurable list of excluded formats (e.g., `cur`, `pict`, `ico`, `dds`, `pfm`, `hdr`). The excluded extensions can be customized via the `core.tools.image-converter.excludedExtensions` property.
-- **Tested with same-named files**: Handles corpora where all files share the same base name but have different extensions.
 - **Unit tested**: Comprehensive test suite ensures correct conversion, exclusion, and validation logic.
 
 ## What Gets Tested
@@ -45,20 +49,22 @@ A plugin for [ETERNA](https://github.com/ETERNA-earkiv/ETERNA) providing robust 
 - Conversion for each supported output format
 - Exclusion of unsupported and already-converted files
 - Validation of output file extension and MIME type
-- Counting of only new representations created in each conversion run
 
 ## Known Limitations
 
 - **Duplicate/overwrite behavior**: If multiple files with the same base name are converted to the same extension, only one may survive in the output (due to base plugin logic). Use unique file names for best results.
 - **MIME type mapping**: Some advanced MIME type to extension mappings may require further configuration.
 - **Plugin conversion logic**: Currently, all files may be copied to new representations; future versions will improve to only add converted files.
-- **Unsupported formats**: Files with certain extensions (see above) are excluded from conversion.
+- **Quality degradation option not supported**: The plugin excludes files that would result in quality loss during conversion:
+  - **Alpha channel preservation**: Files with transparency/alpha channels are excluded when converting to formats that don't support transparency (e.g., JPEG)
+  - **Bit depth preservation**: Files with higher bit depth than the target format supports are excluded to prevent data loss
+  - **Animation preservation**: Animated formats (e.g., GIF) are excluded to preserve animation frames and timing
 - **No parallelization**: Conversion is currently single-threaded.
 - **Error handling**: If a format is unsupported or conversion fails, an exception is thrown and logged; failed files are skipped.
 
 ## Prerequisites
 
-- Java 11 or higher
+- Java 21 or higher
 - Maven 3.6+
 - Docker (for containerized runs)
 
@@ -92,14 +98,6 @@ To run the test suite:
 
 ```shell
 mvn test
-```
-
-## Usage Example
-
-_Example: Convert all images in a directory to TIFF (describe how to trigger conversion, e.g., via ETERNA UI or CLI)_
-
-```shell
-# (Add your actual usage example here)
 ```
 
 ## Configuration
