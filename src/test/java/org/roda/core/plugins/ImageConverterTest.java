@@ -247,23 +247,6 @@ public class ImageConverterTest {
 					filterPreservationRep, null, new Sublist(0, 100),
 					List.of(RodaConstants.REPRESENTATION_ID, RodaConstants.REPRESENTATION_STATES,
 							"uuid"));
-			// Only count preservation representations that actually contain a file with the
-			// current target extension
-			@SuppressWarnings("unused")
-			Set<String> convertedFileUUIDs = new HashSet<>(fileIds); // fileIds is the list you passed to the plugin
-
-			// Get preservation representation IDs before conversion
-			Set<String> existingPreservationRepIds = index.find(
-					IndexedRepresentation.class,
-					filterPreservationRep, null, new Sublist(0, 100),
-					List.of(RodaConstants.REPRESENTATION_ID)).getResults().stream()
-					.map(IndexedRepresentation::getId)
-					.collect(Collectors.toSet());
-
-			// Get converted files from ALL preservation representations and verify
-			// format using direct format validation (more efficient than Siegfried)
-			// Note: AbstractConvertPlugin2 copies ALL files to new representation,
-			// so we need to filter for only the actually converted files
 
 			for (IndexedRepresentation preservationRep : preservationReps.getResults()) {
 				Filter convertedFilesFilter = new Filter();
@@ -271,21 +254,13 @@ public class ImageConverterTest {
 				convertedFilesFilter
 						.add(new SimpleFilterParameter(RodaConstants.FILE_REPRESENTATION_ID, preservationRep.getId()));
 				convertedFilesFilter.add(new SimpleFilterParameter("isDirectory", "false"));
+				convertedFilesFilter.add(new SimpleFilterParameter("extension", format));
 				IndexResult<IndexedFile> convertedFiles = index.find(IndexedFile.class, convertedFilesFilter, null,
 						new Sublist(0, sampleCount + 10),
 						List.of("id", "uuid", "originalName", "fileFormat", "formatMimetype", "extension"));
 
-				// Filter for only files that were actually converted (have the target format
-				// extension)
-				List<IndexedFile> actuallyConvertedFiles = convertedFiles.getResults().stream()
-						.filter(f -> {
-							String fileExtension = f.getFileFormat().getExtension().toLowerCase();
-							return fileExtension.equals(format.toLowerCase());
-						})
-						.toList();
-
-				allConvertedFiles.addAll(actuallyConvertedFiles);
-				allConvertedFileIds.addAll(actuallyConvertedFiles.stream().map(f -> f.getUUID()).toList());
+				allConvertedFiles.addAll(convertedFiles.getResults());
+				allConvertedFileIds.addAll(convertedFiles.getResults().stream().map(f -> f.getUUID()).toList());
 			}
 
 			// Verify we have converted files
@@ -322,11 +297,12 @@ public class ImageConverterTest {
 				String fileFormat = ifile.getId().substring(ifile.getId().lastIndexOf('.') + 1);
 
 				// Get plugin format information
-				@SuppressWarnings("unused")
-				List<String> applicableTo = imageConverter.getApplicableTo();
+				// List<String> applicableTo = imageConverter.getApplicableTo();
 				List<String> convertableTo = imageConverter.getConvertableTo();
-				Map<String, List<String>> pronomToExtension = imageConverter.getPronomToExtension();
-				Map<String, List<String>> mimetypeToExtension = imageConverter.getMimetypeToExtension();
+				// Map<String, List<String>> pronomToExtension =
+				// imageConverter.getPronomToExtension();
+				// Map<String, List<String>> mimetypeToExtension =
+				// imageConverter.getMimetypeToExtension();
 
 				// Validate the converted file format
 				String expectedMimeType = MimeTypes.lookupMimeType(format);
@@ -345,29 +321,19 @@ public class ImageConverterTest {
 						"File " + convFile.getId() + " should be " + expectedMimeType + " but was: " + actualMimeType);
 
 				// Additional validation: check if the format is properly mapped
-				@SuppressWarnings("unused")
-				boolean formatMapped = false;
-				if (filePronom != null && pronomToExtension.containsKey(filePronom)) {
-					formatMapped = pronomToExtension.get(filePronom).contains(actualFormat);
-				} else if (fileMimetype != null && mimetypeToExtension.containsKey(fileMimetype)) {
-					formatMapped = mimetypeToExtension.get(fileMimetype).contains(actualFormat);
-				}
+				// @SuppressWarnings("unused")
+				// boolean formatMapped = false;
+				// if (filePronom != null && pronomToExtension.containsKey(filePronom)) {
+				// formatMapped = pronomToExtension.get(filePronom).contains(actualFormat);
+				// } else if (fileMimetype != null &&
+				// mimetypeToExtension.containsKey(fileMimetype)) {
+				// formatMapped = mimetypeToExtension.get(fileMimetype).contains(actualFormat);
+				// }
 
 				// Log format information for debugging
 				LOGGER.debug("Converted file {}: format={}, mimeType={}, pronom={}, expectedFormat={}",
 						convFile.getId(), actualFormat, actualMimeType, filePronom, format);
 			}
-
-			// Get preservation representation IDs after conversion
-			Set<String> allPreservationRepIds = index.find(
-					IndexedRepresentation.class,
-					filterPreservationRep, null, new Sublist(0, 100),
-					List.of(RodaConstants.REPRESENTATION_ID)).getResults().stream()
-					.map(IndexedRepresentation::getId)
-					.collect(Collectors.toSet());
-
-			Set<String> newPreservationRepIds = new HashSet<>(allPreservationRepIds);
-			newPreservationRepIds.removeAll(existingPreservationRepIds);
 		}
 	}
 
