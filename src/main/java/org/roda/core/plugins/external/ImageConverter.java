@@ -10,6 +10,7 @@ package org.roda.core.plugins.external;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -225,6 +226,21 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
   @Override
   public Map<String, List<String>> getMimetypeToExtension() {
     return FileFormatUtils.getMimetypeToExtension("image-converter");
+  }
+
+  /**
+   * Get the list of file extensions that should be excluded from conversion.
+   * These are formats that are known to cause issues or are not supported.
+   * 
+   * @return List of excluded file extensions
+   */
+  public List<String> getExcludedExtensions() {
+    String excludedExtensions = RodaCoreFactory.getRodaConfigurationAsString("core", "tools", "image-converter",
+        "excludedExtensions");
+    if (excludedExtensions == null || excludedExtensions.trim().isEmpty()) {
+      return new ArrayList<>();
+    }
+    return Arrays.asList(excludedExtensions.split("\\s+"));
   }
 
   @Override
