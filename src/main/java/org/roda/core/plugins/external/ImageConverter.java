@@ -1,9 +1,7 @@
 /**
  * The contents of this file are subject to the license and copyright
  * detailed in the LICENSE.md file at the root of the source
- * tree and available online at
- * <p>
- * https://github.com/keeps/roda
+ * tree
  */
 package org.roda.core.plugins.external;
 
@@ -46,7 +44,7 @@ import org.apache.batik.transcoder.image.JPEGTranscoder;
 import org.apache.batik.transcoder.image.TIFFTranscoder;
 
 /**
- * Plugin for converting image formats using TwelveMonkeys ImageIO
+ * Plugin for converting image formats
  */
 @SuppressWarnings("deprecation")
 public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugin2<T> {
@@ -62,6 +60,12 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
   static {
     TRANSCODER_MAP.put("png", new PNGTranscoder());
     JPEGTranscoder jpegTranscoder = new JPEGTranscoder();
+    // Set high quality (95%) for preservation purposes - balances file size with
+    // image quality
+    // Higher than default (80%) to maintain visual fidelity while still providing
+    // compression benefits
+    // Note: This setting only affects SVG-to-JPEG conversions, not regular image
+    // conversions
     jpegTranscoder.addTranscodingHint(JPEGTranscoder.KEY_QUALITY, 0.95f);
     TRANSCODER_MAP.put("jpg", jpegTranscoder);
     TRANSCODER_MAP.put("jpeg", jpegTranscoder);
@@ -121,7 +125,10 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
 
   @Override
   public String getDescription() {
-    return "Converts images between various formats using the TwelveMonkeys ImageIO library for extended format support.";
+    return "Image format conversion plugin that supports a wide range of input and output formats. " +
+        "Uses the TwelveMonkeys ImageIO library to handle legacy and specialized image formats. " +
+        "Includes specialized SVG conversion support using Apache Batik transcoders. " +
+        "Ideal for digital preservation workflows and format migration.";
   }
 
   @Override
@@ -147,7 +154,6 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
 
   @Override
   public List<PluginParameter> getParameters() {
-    // This now returns the filtered and ordered list
     return this.orderParameters(this.getDefaultParameters());
   }
 
@@ -231,6 +237,8 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
   /**
    * Get the list of file extensions that should be excluded from conversion.
    * These are formats that are known to cause issues or are not supported.
+   * Currently only used for testing purposes - not implemented in main conversion
+   * logic.
    * 
    * @return List of excluded file extensions
    */
