@@ -1,9 +1,7 @@
 /**
  * The contents of this file are subject to the license and copyright
  * detailed in the LICENSE.md file at the root of the source
- * tree and available online at
- * <p>
- * https://github.com/keeps/roda
+ * tree
  */
 package org.roda.core.plugins;
 
@@ -16,11 +14,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -164,7 +159,7 @@ public class ImageConverterTest {
 	@Test
 	public void testImageConverterPluginOnFile() throws RODAException,
 			IOException {
-		// 1. Check AIP exists
+		// Check AIP exists
 		Filter filterIndexedAIP = new Filter();
 		filterIndexedAIP.add(new SimpleFilterParameter(RodaConstants.AIP_ID, aip.getId()));
 		IndexResult<IndexedAIP> indexedAIPResult = index.find(IndexedAIP.class,
@@ -172,9 +167,8 @@ public class ImageConverterTest {
 				List.of(RodaConstants.AIP_ID, "uuid"));
 		Assert.assertEquals(indexedAIPResult.getResults().size(), 1, "Should have 1 indexed AIP");
 		IndexedAIP indexedAIP = indexedAIPResult.getResults().get(0);
-		Assert.assertEquals(indexedAIPResult.getResults().size(), 1, "AIP should exist in the index");
 
-		// 2. Check Representation exists
+		// Check Representation exists
 		Filter repFilter = new Filter();
 		repFilter.add(new SimpleFilterParameter(RodaConstants.REPRESENTATION_AIP_ID,
 				indexedAIP.getUUID()));
@@ -182,9 +176,9 @@ public class ImageConverterTest {
 				rep.getId()));
 		IndexResult<IndexedRepresentation> reps = index.find(IndexedRepresentation.class, repFilter, null,
 				new Sublist(0, 10), List.of("id", "uuid", "aipId"));
-		Assert.assertEquals(reps.getResults().size(), 1, "Representation should exist in the index");
+		Assert.assertEquals(reps.getResults().size(), 1, "Should have 1 indexed representation");
 
-		// 3. Check all sample files are present in the Representation
+		// Check all sample files are present in the Representation
 		Filter repFilesFilter = new Filter();
 		repFilesFilter.add(new SimpleFilterParameter(RodaConstants.FILE_AIP_ID, indexedAIP.getUUID()));
 		repFilesFilter.add(new SimpleFilterParameter(RodaConstants.FILE_REPRESENTATION_ID, rep.getId()));
@@ -200,6 +194,11 @@ public class ImageConverterTest {
 				.filter(f -> baseExcludedExtensions.contains(f.getFileFormat().getExtension().toLowerCase()))
 				.count();
 
+		// Validate that we have files available for conversion
+		Assert.assertTrue(baseExcludedCount < sampleCount,
+				"All files are excluded from conversion. Check if test corpus contains only excluded formats: "
+						+ baseExcludedExtensions);
+
 		for (String format : formatsToTest) {
 
 			List<String> allConvertedFileIds = new ArrayList<>();
@@ -211,6 +210,14 @@ public class ImageConverterTest {
 					.filter(f -> f.getFileFormat().getExtension().toLowerCase().equals(format.toLowerCase()))
 					.count();
 			long totalExcludedCount = baseExcludedCount + formatSpecificExcludedCount;
+
+			// Skip this format if all files would be excluded
+			if (totalExcludedCount >= sampleCount) {
+				LOGGER.info(
+						"Skipping format {} - all files would be excluded (base excluded: {}, format specific excluded: {}, total files: {})",
+						format, baseExcludedCount, formatSpecificExcludedCount, sampleCount);
+				continue;
+			}
 
 			List<String> fileIds = repFiles.getResults().stream()
 					.filter(f -> !baseExcludedExtensions.contains(f.getFileFormat().getExtension().toLowerCase()))
@@ -238,7 +245,7 @@ public class ImageConverterTest {
 			Assert.assertEquals(job.getJobStats().getSourceObjectsProcessedWithSuccess(),
 					sampleCount - totalExcludedCount, "Should process all files");
 
-			// 6. Check converted representation
+			// Check converted representation
 			Filter filterPreservationRep = new Filter();
 			filterPreservationRep.add(new SimpleFilterParameter(RodaConstants.REPRESENTATION_STATES, "PRESERVATION"));
 			filterPreservationRep
@@ -281,7 +288,7 @@ public class ImageConverterTest {
 
 			index.commitAIPs();
 
-			// 8. Verify converted files have correct format using direct validation
+			// Verify converted files have correct format using direct validation
 			// This is more efficient than running Siegfried plugin
 			for (IndexedFile convFile : allConvertedFiles) {
 				// Only validate if the original file was NOT already in the target format
