@@ -23,7 +23,7 @@
     <parent>
         <groupId>org.roda-project</groupId>
         <artifactId>eterna</artifactId>
-        <version>0.2.0</version>
+        <version>0.3.0</version>
     </parent>
     <build>
         <plugins>
@@ -84,19 +84,80 @@
                     </dependency>
                 </dependencies>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.0</version>
+                <configuration>
+                    <transformers>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
+                    </transformers>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
+        <pluginManagement>
+            <plugins>
+            <plugin>
+                        <groupId>pl.project13.maven</groupId>
+                        <artifactId>git-commit-id-plugin</artifactId>
+                        <version>4.0.0</version>
+                        <executions>
+                            <execution>
+                                <id>servlet-resource</id>
+                                <goals>
+                                    <goal>revision</goal>
+                                </goals>
+                                <configuration>
+                                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                                    <generateGitPropertiesFilename>
+                                        ${project.build.directory}/${project.build.finalName}/version.json
+                                    </generateGitPropertiesFilename>
+                                    <format>json</format>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>internal-resource</id>
+                                <goals>
+                                    <goal>revision</goal>
+                                </goals>
+                                <configuration>
+                                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                                    <generateGitPropertiesFilename>
+                                        ${project.build.directory}/classes/version.json
+                                    </generateGitPropertiesFilename>
+                                    <format>json</format>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+        </pluginManagement>
     </build>
     <dependencies>
         <dependency>
             <groupId>org.roda-project</groupId>
             <artifactId>roda-core</artifactId>
-            <version>0.2.0</version>
+            <version>0.3.0</version>
         </dependency>
-        <!-- <dependency>
+        <dependency>
             <groupId>org.roda-project</groupId>
             <artifactId>roda-core-tests</artifactId>
             <scope>test</scope>
-        </dependency> -->
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.19.0</version>
+        </dependency>
         <!-- TwelveMonkeys ImageIO dependencies -->
         <dependency>
             <groupId>com.twelvemonkeys.imageio</groupId>
@@ -158,6 +219,21 @@
             <artifactId>imageio-sgi</artifactId>
             <version>3.12.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-xwd</artifactId>
+            <version>3.12.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-pict</artifactId>
+            <version>3.12.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-dds</artifactId>
+            <version>3.12.0</version>
+        </dependency>
         <!-- TwelveMonkeys Servlet support for Jakarta EE -->
         <dependency>
             <groupId>com.twelvemonkeys.servlet</groupId>
@@ -183,5 +259,27 @@
             <version>6.9.8</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.jodd</groupId>
+            <artifactId>jodd-util</artifactId>
+            <version>6.3.0</version>
+        </dependency>
     </dependencies>
+
+
+    <dependencyManagement>
+    
+
+        <dependencies>
+        
+
+            <dependency>
+                <groupId>org.apache.zookeeper</groupId>
+                <artifactId>zookeeper-jute</artifactId>
+                <version>3.9.3</version>
+            </dependency>
+
+        </dependencies>
+
+    </dependencyManagement>
 </project>

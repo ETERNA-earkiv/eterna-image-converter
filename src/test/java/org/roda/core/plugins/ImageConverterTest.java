@@ -1,61 +1,47 @@
 /**
  * The contents of this file are subject to the license and copyright
  * detailed in the LICENSE.md file at the root of the source
- * tree and available online at
- * <p>
- * https://github.com/keeps/roda
+ * tree
  */
 package org.roda.core.plugins;
 
-import java.net.URL;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.Files;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
-import org.roda.core.CorporaConstants;
+import org.apache.commons.io.FilenameUtils;
 import org.roda.core.RodaCoreFactory;
 import org.roda.core.TestsHelper;
-import org.roda.core.common.monitor.TransferredResourcesScanner;
 import org.roda.core.data.common.RodaConstants;
-import org.roda.core.data.exceptions.AlreadyExistsException;
-import org.roda.core.data.exceptions.AuthorizationDeniedException;
-import org.roda.core.data.exceptions.GenericException;
-import org.roda.core.data.exceptions.IsStillUpdatingException;
-import org.roda.core.data.exceptions.NotFoundException;
 import org.roda.core.data.exceptions.RODAException;
-import org.roda.core.data.exceptions.RequestNotValidException;
 import org.roda.core.data.v2.index.IndexResult;
 import org.roda.core.data.v2.index.filter.Filter;
 import org.roda.core.data.v2.index.filter.SimpleFilterParameter;
-import org.roda.core.data.v2.index.select.SelectedItemsAll;
 import org.roda.core.data.v2.index.select.SelectedItemsList;
 import org.roda.core.data.v2.index.sublist.Sublist;
 import org.roda.core.data.v2.ip.AIP;
 import org.roda.core.data.v2.ip.IndexedAIP;
+import org.roda.core.data.v2.ip.IndexedFile;
 import org.roda.core.data.v2.ip.IndexedRepresentation;
 import org.roda.core.data.v2.ip.Permissions;
-import org.roda.core.data.v2.ip.TransferredResource;
+import org.roda.core.data.v2.ip.Representation;
 import org.roda.core.data.v2.jobs.Job;
 import org.roda.core.data.v2.jobs.PluginType;
 import org.roda.core.index.IndexService;
 import org.roda.core.index.IndexTestUtils;
 import org.roda.core.model.ModelService;
-import org.roda.core.plugins.base.AbstractConvertPluginDummy;
 import org.roda.core.plugins.base.characterization.SiegfriedPlugin;
-import org.roda.core.plugins.base.ingest.TransferredResourceToAIPPlugin;
 import org.roda.core.plugins.external.ImageConverter;
 import org.roda.core.storage.ContentPayload;
-import org.roda.core.storage.DefaultStoragePath;
 import org.roda.core.storage.StorageService;
 import org.roda.core.storage.fs.FSPathContentPayload;
 import org.roda.core.storage.fs.FSUtils;
@@ -64,240 +50,298 @@ import org.roda.core.util.IdUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.AssertJUnit;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import jodd.net.MimeTypes;
+
 @Test(groups = { RodaConstants.TEST_GROUP_ALL, RodaConstants.TEST_GROUP_TRAVIS })
 public class ImageConverterTest {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ImageConverterTest.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(ImageConverterTest.class);
 
-  private static Path basePath;
-  private static ModelService model;
-  private static IndexService index;
+	private static Path basePath;
+	private static ModelService model;
+	private static IndexService index;
 
-  private static StorageService corporaService;
+	@SuppressWarnings("unused")
+	private static StorageService corporaService;
 
-  private static Path corporaPath;
+	private static Path corporaPath;
 
-  private Path tmpDir;
+	private Path tmpDir;
+	private int sampleCount;
+	private AIP aip;
+	private Representation rep;
+	private ImageConverter<IndexedFile> imageConverter;
+	private List<String> formatsToTest;
+	// Extensions that should be excluded from conversion (e.g., unsupported
+	// formats)
+	private List<String> baseExcludedExtensions;
 
-  @BeforeMethod
-  public void setUp() throws Exception {
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@BeforeMethod
+	public void setUp() throws Exception {
 
-    basePath = TestsHelper.createBaseTempDir(this.getClass(), true);
+		basePath = TestsHelper.createBaseTempDir(this.getClass(), true);
 
-    boolean deploySolr = true;
-    boolean deployLdap = true;
-    boolean deployFolderMonitor = true;
-    boolean deployOrchestrator = true;
-    boolean deployPluginManager = true;
-    boolean deployDefaultResources = false;
-    RodaCoreFactory.instantiateTest(deploySolr, deployLdap, deployFolderMonitor, deployOrchestrator,
-        deployPluginManager, deployDefaultResources);
-    model = RodaCoreFactory.getModelService();
-    index = RodaCoreFactory.getIndexService();
-    RodaCoreFactory.addConfiguration("image-converter.properties");
-    RodaCoreFactory.getPluginManager().registerPlugin(new ImageConverter());
+		boolean deploySolr = true;
+		boolean deployLdap = true;
+		boolean deployFolderMonitor = true;
+		boolean deployOrchestrator = true;
+		boolean deployPluginManager = true;
+		boolean deployDefaultResources = false;
+		RodaCoreFactory.instantiateTest(deploySolr, deployLdap, deployFolderMonitor, deployOrchestrator,
+				deployPluginManager, deployDefaultResources);
+		model = RodaCoreFactory.getModelService();
+		index = RodaCoreFactory.getIndexService();
 
-    URL corporaURL = getClass().getResource("/corpora");
-    corporaService = new FileStorageService(Paths.get(corporaURL.toURI()));
-    corporaPath = Paths.get(corporaURL.toURI());
-    FileUtils.deleteDirectory(new File("/tmp/test"));
-    tmpDir = Files.createDirectory(Paths.get("/tmp/test"));
-    Files.copy(corporaPath.resolve("sample_files").resolve("sample_640x426.tiff"),
-        tmpDir.resolve("sample_640x426.tiff"));
-    // skapa aip,rep -> få in ex filer i rep
+		RodaCoreFactory.addConfiguration("image-converter.properties");
+		RodaCoreFactory.getPluginManager().registerPlugin(new ImageConverter());
 
-    LOGGER.info("Running internal convert plugins tests under storage {}", basePath);
-  }
+		URL corporaURL = ImageConverterTest.class.getResource("/corpora");
+		corporaService = new FileStorageService(Paths.get(corporaURL.toURI()));
+		corporaPath = Paths.get(corporaURL.toURI());
+		FileUtils.deleteDirectory(new File("/tmp/test"));
+		tmpDir = Files.createDirectory(Paths.get("/tmp/test"));
 
-  @AfterMethod
-  public void tearDown() throws Exception {
-    // ta bort allt skapat
-    IndexTestUtils.resetIndex();
-    RodaCoreFactory.shutdown();
-    FSUtils.deletePathQuietly(basePath);
-  }
+		// Copy all files from the Media directory using FileUtils
+		Path mediaPath = corporaPath.resolve("Media");
+		FileUtils.copyDirectory(mediaPath.toFile(), tmpDir.toFile());
 
-  @AfterMethod
-  public void cleanUp() throws RODAException {
-    try {
-      Files.deleteIfExists(tmpDir);
-    } catch (IOException e) {
-      // do nothing.
-    }
-  }
+		// Count the files in the temporary directory
+		sampleCount = tmpDir.toFile().listFiles().length;
 
-  // public List<TransferredResource> createCorpora() throws NotFoundException,
-  // GenericException, AlreadyExistsException,
-  // IsStillUpdatingException, AuthorizationDeniedException {
-  // TransferredResourcesScanner f =
-  // RodaCoreFactory.getTransferredResourcesScanner();
+		aip = model.createAIP(
+				null,
+				RodaConstants.AIP_TYPE_MIXED,
+				new Permissions(),
+				RodaConstants.ADMIN);
 
-  // List<TransferredResource> resources = new ArrayList<>();
+		final String repId = IdUtils.createUUID();
+		rep = model.createRepresentation(aip.getId(), repId, true,
+				RodaConstants.AIP_TYPE_MIXED, true, RodaConstants.ADMIN);
+		index.commitAIPs();
 
-  // Path corpora =
-  // corporaPath.resolve(RodaConstants.STORAGE_CONTAINER_AIP).resolve("AIP_1")
-  // .resolve(RodaConstants.STORAGE_DIRECTORY_REPRESENTATIONS).resolve(CorporaConstants.REPRESENTATION_CONVERTER_ID_2)
-  // .resolve(RodaConstants.STORAGE_DIRECTORY_DATA);
+		for (File file : tmpDir.toFile().listFiles()) {
+			ContentPayload payload = new FSPathContentPayload(file.toPath().toAbsolutePath());
+			model.createFile(aip.getId(), repId,
+					List.of(FilenameUtils.getExtension(file.getName())),
+					file.getName(), payload,
+					RodaConstants.ADMIN);
+		}
 
-  // String transferredResourceId = "testt";
-  // FSUtils.copy(corpora, f.getBasePath().resolve(transferredResourceId), true);
+		index.commitAIPs();
 
-  // f.updateTransferredResources(Optional.empty(), true);
-  // index.commit(TransferredResource.class);
+		imageConverter = new ImageConverter<>();
+		formatsToTest = imageConverter.getConvertableTo();
+		baseExcludedExtensions = imageConverter.getExcludedExtensions();
 
-  // resources
-  // .add(index.retrieve(TransferredResource.class,
-  // IdUtils.createUUID(transferredResourceId), new ArrayList<>()));
-  // return resources;
-  // }
+		LOGGER.info("Running ImageConverter Plugin tests under storage {}", basePath);
+	}
 
-  // public AIP ingestCorpora() throws RequestNotValidException,
-  // NotFoundException, GenericException,
-  // AlreadyExistsException, AuthorizationDeniedException,
-  // IsStillUpdatingException {
-  // String parentId = null;
-  // String aipType = RodaConstants.AIP_TYPE_MIXED;
-  // AIP root = model.createAIP(parentId, aipType, new Permissions(),
-  // RodaConstants.ADMIN);
+	@AfterMethod
+	public void tearDown() throws Exception {
+		IndexTestUtils.resetIndex();
+		RodaCoreFactory.shutdown();
+		FSUtils.deletePathQuietly(basePath);
+	}
 
-  // Map<String, String> parameters = new HashMap<>();
-  // parameters.put(RodaConstants.PLUGIN_PARAMS_PARENT_ID, root.getId());
+	@AfterMethod
+	public void cleanUp() throws RODAException {
+		try {
+			Files.deleteIfExists(tmpDir);
+		} catch (IOException e) {
+			// do nothing.
+		}
+	}
 
-  // List<TransferredResource> transferredResources;
-  // transferredResources = createCorpora();
+	@Test
+	public void testImageConverterPluginOnFile() throws RODAException,
+			IOException {
+		// Check AIP exists
+		Filter filterIndexedAIP = new Filter();
+		filterIndexedAIP.add(new SimpleFilterParameter(RodaConstants.AIP_ID, aip.getId()));
+		IndexResult<IndexedAIP> indexedAIPResult = index.find(IndexedAIP.class,
+				filterIndexedAIP, null, new Sublist(0, 100),
+				List.of(RodaConstants.AIP_ID, "uuid"));
+		Assert.assertEquals(indexedAIPResult.getResults().size(), 1, "Should have 1 indexed AIP");
+		IndexedAIP indexedAIP = indexedAIPResult.getResults().get(0);
 
-  // AssertJUnit.assertEquals(1, transferredResources.size());
+		// Check Representation exists
+		Filter repFilter = new Filter();
+		repFilter.add(new SimpleFilterParameter(RodaConstants.REPRESENTATION_AIP_ID,
+				indexedAIP.getUUID()));
+		repFilter.add(new SimpleFilterParameter(RodaConstants.REPRESENTATION_ID,
+				rep.getId()));
+		IndexResult<IndexedRepresentation> reps = index.find(IndexedRepresentation.class, repFilter, null,
+				new Sublist(0, 10), List.of("id", "uuid", "aipId"));
+		Assert.assertEquals(reps.getResults().size(), 1, "Should have 1 indexed representation");
 
-  // Job job = TestsHelper.executeJob(TransferredResourceToAIPPlugin.class,
-  // parameters, PluginType.SIP_TO_AIP,
-  // SelectedItemsList.create(TransferredResource.class,
-  // transferredResources.stream().map(tr ->
-  // tr.getUUID()).collect(Collectors.toList())));
+		// Check all sample files are present in the Representation
+		Filter repFilesFilter = new Filter();
+		repFilesFilter.add(new SimpleFilterParameter(RodaConstants.FILE_AIP_ID, indexedAIP.getUUID()));
+		repFilesFilter.add(new SimpleFilterParameter(RodaConstants.FILE_REPRESENTATION_ID, rep.getId()));
+		repFilesFilter.add(new SimpleFilterParameter("isDirectory", "false"));
+		IndexResult<IndexedFile> repFiles = index.find(
+				IndexedFile.class, repFilesFilter, null,
+				new Sublist(0, sampleCount + 10), List.of("id", "uuid", "originalName", "fileFormat", "extension"));
+		Assert.assertEquals(repFiles.getResults().size(), sampleCount,
+				"Should find all sample files in the representation");
 
-  // TestsHelper.getJobReports(index, job, true);
+		// Define excluded extensions once
+		long baseExcludedCount = repFiles.getResults().stream()
+				.filter(f -> baseExcludedExtensions.contains(f.getFileFormat().getExtension().toLowerCase()))
+				.count();
 
-  // index.commitAIPs();
+		// Validate that we have files available for conversion
+		Assert.assertTrue(baseExcludedCount < sampleCount,
+				"All files are excluded from conversion. Check if test corpus contains only excluded formats: "
+						+ baseExcludedExtensions);
 
-  // IndexResult<IndexedAIP> find = index.find(IndexedAIP.class,
-  // new Filter(new SimpleFilterParameter(RodaConstants.AIP_PARENT_ID,
-  // root.getId())), null, new Sublist(0, 10),
-  // new ArrayList<>());
+		for (String format : formatsToTest) {
 
-  // AssertJUnit.assertEquals(1L, find.getTotalCount());
-  // IndexedAIP indexedAIP = find.getResults().get(0);
+			List<String> allConvertedFileIds = new ArrayList<>();
+			List<IndexedFile> allConvertedFiles = new ArrayList<>();
 
-  // return model.retrieveAIP(indexedAIP.getId());
-  // }
+			// Calculate how many files will be excluded for this specific format
+			// (base excluded + files that are already in the target format)
+			long formatSpecificExcludedCount = repFiles.getResults().stream()
+					.filter(f -> f.getFileFormat().getExtension().toLowerCase().equals(format.toLowerCase()))
+					.count();
+			long totalExcludedCount = baseExcludedCount + formatSpecificExcludedCount;
 
-  @Test
-  public void testImageConverterPluginOnFile() throws RODAException {
-    // - köra imageConvert jobbet
-    // - köra fileidentifer(siegfried) på nya filen
-    // - läsa rapporten från fileidentifier =? lyckat
-    // - hämta nya filen, kontrollera metadata fält för filtyp = förväntat filtyp
-    // vald outputformat
-    // - testa mot filformat mot varje outputformat
+			// Skip this format if all files would be excluded
+			if (totalExcludedCount >= sampleCount) {
+				LOGGER.info(
+						"Skipping format {} - all files would be excluded (base excluded: {}, format specific excluded: {}, total files: {})",
+						format, baseExcludedCount, formatSpecificExcludedCount, sampleCount);
+				continue;
+			}
 
-    final String repId = IdUtils.createUUID();
+			List<String> fileIds = repFiles.getResults().stream()
+					.filter(f -> !baseExcludedExtensions.contains(f.getFileFormat().getExtension().toLowerCase()))
+					.filter(f -> !f.getFileFormat().getExtension().toLowerCase().equals(format.toLowerCase()))
+					.map(f -> f.getUUID()).toList();
 
-    // model.createAIP(aipId, corporaService,
-    //     DefaultStoragePath.parse(CorporaConstants.SOURCE_AIP_CONTAINER, CorporaConstants.SOURCE_AIP_ID_EARK2S),
-    //     RodaConstants.ADMIN);
+			SelectedItemsList<IndexedFile> files = SelectedItemsList.create(IndexedFile.class, fileIds);
 
-    AIP aip = model.createAIP(null, RodaConstants.AIP_TYPE_MIXED, new Permissions(), RodaConstants.ADMIN);
+			// Prepare parameters
+			Map<String, String> parameters = new HashMap<>();
+			parameters.put(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP,
+					"type=rep;value=mixed;markAsPreservation=true");
+			parameters.put(RodaConstants.PLUGIN_PARAMS_CONVERSION_PROFILE, format);
 
-    index.commitAIPs();
+			// Run ImageConverter plugin
+			@SuppressWarnings("unchecked")
+			Job job = TestsHelper.executeJob(ImageConverter.class, parameters,
+					PluginType.AIP_TO_AIP,
+					files);
 
-    model.createRepresentation(aip.getId(), repId, true, RodaConstants.AIP_TYPE_MIXED, false, RodaConstants.ADMIN);
+			index.commitAIPs();
 
-    index.commitAIPs();
-    Path path = tmpDir.resolve("sample_640x426.tiff");
-    ContentPayload payload = new FSPathContentPayload(path.toAbsolutePath());
-    model.createFile(aip.getId(), repId, List.of("representations", repId, "data", "sample_640x426.tiff"), "sample_640x426.tiff",payload, RodaConstants.ADMIN);
+			Assert.assertEquals(job.getJobStats().getCompletionPercentage(), 100,
+					"ImageConverter job did not complete");
+			Assert.assertEquals(job.getJobStats().getSourceObjectsProcessedWithSuccess(),
+					sampleCount - totalExcludedCount, "Should process all files");
 
-    index.commitAIPs();
-    final Map<String, String> parameters = new HashMap<>();
-    
-    parameters.put(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP, "type=rep;value=mixed");
-    parameters.put(RodaConstants.PLUGIN_PARAMS_CONVERSION_PROFILE, "jpg");
+			// Check converted representation
+			Filter filterPreservationRep = new Filter();
+			filterPreservationRep.add(new SimpleFilterParameter(RodaConstants.REPRESENTATION_STATES, "PRESERVATION"));
+			filterPreservationRep
+					.add(new SimpleFilterParameter(RodaConstants.REPRESENTATION_AIP_ID, indexedAIP.getUUID()));
+			IndexResult<IndexedRepresentation> preservationReps = index.find(IndexedRepresentation.class,
+					filterPreservationRep, null, new Sublist(0, 100),
+					List.of(RodaConstants.REPRESENTATION_ID, RodaConstants.REPRESENTATION_STATES,
+							"uuid"));
 
-    final Job job = TestsHelper.executeJob(ImageConverter.class, parameters, PluginType.AIP_TO_AIP,
-        SelectedItemsAll.create(org.roda.core.data.v2.ip.File.class));
- 
-    index.commitAIPs();
+			for (IndexedRepresentation preservationRep : preservationReps.getResults()) {
+				Filter convertedFilesFilter = new Filter();
+				convertedFilesFilter.add(new SimpleFilterParameter(RodaConstants.FILE_AIP_ID, indexedAIP.getUUID()));
+				convertedFilesFilter
+						.add(new SimpleFilterParameter(RodaConstants.FILE_REPRESENTATION_ID, preservationRep.getId()));
+				convertedFilesFilter.add(new SimpleFilterParameter("isDirectory", "false"));
+				convertedFilesFilter.add(new SimpleFilterParameter("extension", format));
+				IndexResult<IndexedFile> convertedFiles = index.find(IndexedFile.class, convertedFilesFilter, null,
+						new Sublist(0, sampleCount + 10),
+						List.of("id", "uuid", "originalName", "fileFormat", "formatMimetype", "extension"));
 
-    final Filter filterParentTheAIP = new Filter();
-    filterParentTheAIP.add(new SimpleFilterParameter(RodaConstants.REPRESENTATION_AIP_ID, aip.getId()));
-    final IndexResult<IndexedRepresentation> indexResult = index.find(IndexedRepresentation.class, filterParentTheAIP,
-        null, new Sublist(0, 10), Collections.emptyList());
+				allConvertedFiles.addAll(convertedFiles.getResults());
+				allConvertedFileIds.addAll(convertedFiles.getResults().stream().map(f -> f.getUUID()).toList());
+			}
 
-    Assert.assertEquals(job.getJobStats().getCompletionPercentage(), 100);
-    // Assert.assertEquals(job.getJobStats().getSourceObjectsProcessedWithSuccess(), 1);
-    Assert.assertEquals(indexResult.getResults().size(), 2);
+			// Verify we have converted files
+			Assert.assertTrue(allConvertedFiles.size() > 0, "Should have converted files");
 
-    Map<String, String> siegfriedParams = new HashMap<>();
-    siegfriedParams.put(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP, "false");
-    Job siegfriedJob = TestsHelper.executeJob(SiegfriedPlugin.class, siegfriedParams,
-        PluginType.AIP_TO_AIP, SelectedItemsAll.create(org.roda.core.data.v2.ip.File.class));
+			// Run Siegfried on converted files to populate file format metadata
+			// This is necessary because the converted files need their format information
+			// characterized
+			@SuppressWarnings("unchecked")
+			Job siegfriedJob = TestsHelper.executeJob(SiegfriedPlugin.class, Collections.emptyMap(),
+					PluginType.MISC, SelectedItemsList.create(IndexedFile.class, allConvertedFileIds));
 
-    Assert.assertEquals(siegfriedJob.getJobStats().getCompletionPercentage(), 100);
+			Assert.assertEquals(siegfriedJob.getJobStats().getCompletionPercentage(), 100,
+					"Siegfried job did not complete");
+			Assert.assertEquals(siegfriedJob.getJobStats().getSourceObjectsProcessedWithSuccess(),
+					allConvertedFileIds.size(),
+					"Siegfried should process all converted files");
 
-    Filter fileFilter = new Filter();
-    fileFilter.add(new SimpleFilterParameter(RodaConstants.FILE_AIP_ID, aip.getId()));
-    IndexResult<org.roda.core.data.v2.ip.IndexedFile> files = index.find(
-        org.roda.core.data.v2.ip.IndexedFile.class, fileFilter, null,
-        new Sublist(0, 10), Collections.emptyList());
+			index.commitAIPs();
 
-    Optional<org.roda.core.data.v2.ip.IndexedFile> convertedFile = files.getResults().stream()
-        .filter(f -> f.getId().toLowerCase().endsWith(".jpg"))
-        .findFirst();
+			// Verify converted files have correct format using direct validation
+			// This is more efficient than running Siegfried plugin
+			for (IndexedFile convFile : allConvertedFiles) {
+				// Only validate if the original file was NOT already in the target format
+				String originalName = convFile.getOriginalName();
+				if (originalName != null && originalName.toLowerCase().endsWith("." + format.toLowerCase())) {
+					continue; // skip files that were already in the target format
+				}
+				// Direct file format retrieval using AbstractConvertPlugin2 pattern
+				IndexedFile ifile = index.retrieve(IndexedFile.class, convFile.getUUID(),
+						RodaConstants.FILE_FORMAT_FIELDS_TO_RETURN);
+				String fileMimetype = ifile.getFileFormat().getMimeType();
+				String filePronom = ifile.getFileFormat().getPronom();
+				String fileFormat = ifile.getId().substring(ifile.getId().lastIndexOf('.') + 1);
 
-    Assert.assertTrue(convertedFile.isPresent());
+				// Get plugin format information
+				// List<String> applicableTo = imageConverter.getApplicableTo();
+				List<String> convertableTo = imageConverter.getConvertableTo();
+				// Map<String, List<String>> pronomToExtension =
+				// imageConverter.getPronomToExtension();
+				// Map<String, List<String>> mimetypeToExtension =
+				// imageConverter.getMimetypeToExtension();
 
-    // Verify file format metadata from siegfried
-    String formatFromSiegfried = convertedFile.get().getFileFormat().toString();
-    Assert.assertNotNull(formatFromSiegfried, "File format metadata is missing");
-    Assert.assertTrue(formatFromSiegfried.toLowerCase().contains("jpeg"),
-        "File format should be JPEG but was: " + formatFromSiegfried);
+				// Validate the converted file format
+				String expectedMimeType = MimeTypes.lookupMimeType(format);
+				String actualMimeType = fileMimetype;
+				String actualFormat = fileFormat.toLowerCase();
 
-    // Test conversion to other formats (PNG and TIFF)
-    String[] formatsToTest = new String[] { "png", "tiff" };
-    for (String format : formatsToTest) {
-      parameters.put(RodaConstants.PLUGIN_PARAMS_OUTPUT_FORMAT, format);
-      Job formatJob = TestsHelper.executeJob(ImageConverter.class, parameters,
-          PluginType.AIP_TO_AIP, SelectedItemsAll.create(org.roda.core.data.v2.ip.File.class));
+				// Check if the format is in the list of convertable formats
+				Assert.assertTrue(convertableTo.contains(actualFormat),
+						"File " + convFile.getId() + " should be in convertable formats list: " + convertableTo +
+								" but was: " + actualFormat);
 
-      Assert.assertEquals(formatJob.getJobStats().getCompletionPercentage(), 100,
-          "Conversion to " + format + " failed");
+				// Check MIME type
+				Assert.assertNotNull(actualMimeType, "File format metadata is missing for " + convFile.getId());
+				Assert.assertTrue(
+						actualMimeType.toLowerCase().contains(expectedMimeType.toLowerCase()),
+						"File " + convFile.getId() + " should be " + expectedMimeType + " but was: " + actualMimeType);
 
-      // Verify the converted file exists with correct format
-      index.commitAIPs();
-      IndexResult<org.roda.core.data.v2.ip.IndexedFile> formatFiles = index.find(
-          org.roda.core.data.v2.ip.IndexedFile.class, fileFilter, null,
-          new Sublist(0, 10), Collections.emptyList());
+				// Additional validation: check if the format is properly mapped
+				// @SuppressWarnings("unused")
+				// boolean formatMapped = false;
+				// if (filePronom != null && pronomToExtension.containsKey(filePronom)) {
+				// formatMapped = pronomToExtension.get(filePronom).contains(actualFormat);
+				// } else if (fileMimetype != null &&
+				// mimetypeToExtension.containsKey(fileMimetype)) {
+				// formatMapped = mimetypeToExtension.get(fileMimetype).contains(actualFormat);
+				// }
 
-      Optional<org.roda.core.data.v2.ip.IndexedFile> formatFile = formatFiles.getResults().stream()
-          .filter(f -> f.getId().toLowerCase().endsWith("." + format))
-          .findFirst();
-
-      Assert.assertTrue(formatFile.isPresent(),
-          "Converted " + format + " file not found");
-    }
-
-    // AIP aip = ingestCorpora();
-
-    // Map<String, String> parameters = new HashMap<>();
-    // TestsHelper.executeJob(ExamplePlugin.class, parameters,
-    // PluginType.AIP_TO_AIP, SelectedItemsAll.create(AIP.class));
-
-    // AIP aip2 = model.retrieveAIP(aip.getId());
-    // Assert.assertEquals(aip2.getRepresentations().size(),
-    // aip.getRepresentations().size());
-
-  }
+				// Log format information for debugging
+				LOGGER.debug("Converted file {}: format={}, mimeType={}, pronom={}, expectedFormat={}",
+						convFile.getId(), actualFormat, actualMimeType, filePronom, format);
+			}
+		}
+	}
 
 }
