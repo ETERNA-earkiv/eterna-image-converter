@@ -31,7 +31,7 @@ import org.roda.core.index.IndexService;
 import org.roda.core.model.ModelService;
 import org.roda.core.plugins.Plugin;
 import org.roda.core.plugins.PluginException;
-import org.roda.core.plugins.base.conversion.AbstractConvertPlugin2;
+import org.roda.core.plugins.base.conversion.AbstractConvertPlugin;
 import org.roda.core.storage.StorageService;
 import org.roda.core.util.CommandException;
 import org.slf4j.Logger;
@@ -47,7 +47,7 @@ import org.apache.batik.transcoder.image.TIFFTranscoder;
  * Plugin for converting image formats
  */
 @SuppressWarnings("deprecation")
-public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugin2<T> {
+public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugin<T> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ImageConverter.class);
 
