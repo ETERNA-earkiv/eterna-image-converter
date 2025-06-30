@@ -30,11 +30,11 @@ jobs:
         with:
           maven-version: 3.9.10
 
-      - name: Run Tests
-        run: mvn $MAVEN_CLI_OPTS clean test
-        env:
-          CICD_GITHUB_USERNAME_MAVEN: ${{ secrets.CICD_GITHUB_USERNAME_MAVEN }}
-          CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }}
+      # - name: Run Tests
+      #   run: mvn $MAVEN_CLI_OPTS clean test
+      #   env:
+      #     CICD_GITHUB_USERNAME_MAVEN: ${{ secrets.CICD_GITHUB_USERNAME_MAVEN }}
+      #     CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }} // TODO: Add this to the workflow, setup services Solr, etc.
       
       - name: Build
         run: mvn $MAVEN_CLI_OPTS clean package -Dmaven.test.skip=true
