@@ -54,4 +54,6 @@ jobs:
           files: ${{ vars.PLUGIN_ZIP}}
           title: ${{ gitea.ref_name }}
           body: 'Description of the release'
+          insecure: true
+          api_key: ${{ secrets.CICD_GITEA_TOKEN }}
       
