@@ -9,7 +9,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version"
+      MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version --settings .m2/settings.xml"
     steps:
       - name: Disable GIT TLS verification
         run: |
@@ -38,5 +38,8 @@ jobs:
           restore-keys: ${{ runner.os }}-maven-
       
       - name: Build
-        run: mvn $MAVEN_CLI_OPTS clean package -Dmaven.test.skip=true    
+        run: mvn $MAVEN_CLI_OPTS clean package -Dmaven.test.skip=true
+        env:
+          CICD_GITHUB_USERNAME_MAVEN: ${{ secrets.CICD_GITHUB_USERNAME_MAVEN }}
+          CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }}
       
