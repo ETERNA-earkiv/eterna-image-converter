@@ -41,6 +41,12 @@ jobs:
         env:
           CICD_GITHUB_USERNAME_MAVEN: ${{ secrets.CICD_GITHUB_USERNAME_MAVEN }}
           CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }}
+
+      # Requiered for the release action
+      - name: Setup Go
+        uses: https://github.com/actions/setup-go@v4
+        with:
+          go-version: '>=1.20.1'
       
       - name: Release artifacts
         uses: https://gitea.com/actions/release-action@main
