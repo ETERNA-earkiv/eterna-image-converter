@@ -30,16 +30,22 @@ jobs:
         with:
           maven-version: 3.9.10
 
-      - name: Cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-maven-
+      - name: Run Tests
+        run: mvn $MAVEN_CLI_OPTS clean test
+        env:
+          CICD_GITHUB_USERNAME_MAVEN: ${{ secrets.CICD_GITHUB_USERNAME_MAVEN }}
+          CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }}
       
       - name: Build
         run: mvn $MAVEN_CLI_OPTS clean package -Dmaven.test.skip=true
         env:
           CICD_GITHUB_USERNAME_MAVEN: ${{ secrets.CICD_GITHUB_USERNAME_MAVEN }}
           CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }}
+      
+      - name: Release artifacts
+        uses: https://gitea.com/actions/release-action@main
+        with:
+          files: ${{ vars.PLUGIN_ZIP}}
+          title: ${{ gitea.ref_name }}
+          body: 'Description of the release'
       
