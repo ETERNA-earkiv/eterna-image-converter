@@ -11,18 +11,18 @@ jobs:
     env:
       MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version --settings .m2/settings.xml"
 
-    services:
-      zookeeper:
-        image: zookeeper:3.9.1-jre-17
-        ports:
-          - 2181:2181
-      solr:
-        image: solr:9
-        ports:
-          - 8983:8983
-        env:
-          ZK_HOST: zookeeper:2181
-        options: -e cloud
+    # services:
+    #   zookeeper:
+    #     image: zookeeper:3.9.1-jre-17
+    #     ports:
+    #       - 2181:2181
+    #   solr:
+    #     image: solr:9
+    #     ports:
+    #       - 8983:8983
+    #     env:
+    #       ZK_HOST: zookeeper:2181
+    #     options: -e cloud
 
     steps:
       - name: Disable GIT TLS verification
