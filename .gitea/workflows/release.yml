@@ -48,12 +48,32 @@ jobs:
         with:
           go-version: '>=1.20.1'
       
+      - name: Extract changelog for this release
+        id: changelog
+        run: |
+          VERSION="${{ gitea.ref_name }}"
+          # Remove leading 'v' if present
+          VERSION="${VERSION#v}"
+          awk "/^## \\[${VERSION//./\\.}\\]/ {flag=1; next} /^## \\[/ {flag=0} flag" CHANGELOG.md > RELEASE_CHANGELOG.md
+          echo 'RELEASE_NOTES<<EOF' >> $GITHUB_ENV
+          cat RELEASE_CHANGELOG.md >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+      
       - name: Release artifacts
         uses: https://gitea.com/actions/release-action@main
         with:
           files: ${{ vars.PLUGIN_ZIP}}
           title: ${{ gitea.ref_name }}
-          body: 'Description of the release'
+          body: |
+            ## ${{ vars.PLUGIN_NAME }} Plugin ${{ gitea.ref_name }}
+            
+            **Commit**: `${{ gitea.sha }}`
+
+            ### Changelog
+            ${{ env.RELEASE_NOTES }}
+            
+            ### Installation
+            Download and extract the plugin zip to your ETERNA plugins directory.
           insecure: true
           api_key: ${{ secrets.CICD_GITEA_TOKEN }}
       
