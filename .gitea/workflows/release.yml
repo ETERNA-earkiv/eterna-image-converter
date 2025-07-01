@@ -10,6 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version --settings .m2/settings.xml"
+
+    services:
+      zookeeper:
+        image: zookeeper:3.9.1-jre-17
+        ports:
+          - 2181:2181
+      solr:
+        image: solr:9
+        ports:
+          - 8983:8983
+        env:
+          ZK_HOST: zookeeper:2181
+        options: -e cloud
+
     steps:
       - name: Disable GIT TLS verification
         run: |
@@ -29,12 +43,22 @@ jobs:
         uses: hb0730/maven-action@v1
         with:
           maven-version: 3.9.10
+      
+      - name: Setup Go
+        uses: https://github.com/actions/setup-go@v4
+        with:
+          go-version: '>=1.20.1'
 
-      # - name: Run Tests
-      #   run: mvn $MAVEN_CLI_OPTS clean test
-      #   env:
-      #     CICD_GITHUB_USERNAME_MAVEN: ${{ secrets.CICD_GITHUB_USERNAME_MAVEN }}
-      #     CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }} // TODO: Add this to the workflow, setup services Solr, etc.
+      - name: Install siegfried
+        run: |
+          go install github.com/richardlehane/siegfried/cmd/sf@latest
+          sf -update
+
+      - name: Run Tests
+        run: mvn $MAVEN_CLI_OPTS clean test
+        env:
+          CICD_GITHUB_USERNAME_MAVEN: ${{ secrets.CICD_GITHUB_USERNAME_MAVEN }}
+          CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }}
       
       - name: Build
         run: mvn $MAVEN_CLI_OPTS clean package -Dmaven.test.skip=true
@@ -42,11 +66,6 @@ jobs:
           CICD_GITHUB_USERNAME_MAVEN: ${{ secrets.CICD_GITHUB_USERNAME_MAVEN }}
           CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }}
 
-      # Requiered for the release action
-      - name: Setup Go
-        uses: https://github.com/actions/setup-go@v4
-        with:
-          go-version: '>=1.20.1'
       
       - name: Extract changelog for this release
         id: changelog
