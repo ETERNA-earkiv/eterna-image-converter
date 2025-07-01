@@ -11,18 +11,23 @@ jobs:
     env:
       MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version --settings .m2/settings.xml"
 
-    # services:
-    #   zookeeper:
-    #     image: zookeeper:3.9.1-jre-17
-    #     ports:
-    #       - 2181:2181
-    #   solr:
-    #     image: solr:9
-    #     ports:
-    #       - 8983:8983
-    #     env:
-    #       ZK_HOST: zookeeper:2181
-    #     options: -e cloud
+    services:
+      zookeeper:
+        image: zookeeper:3.9
+        ports:
+          - 2181:2181
+        env:
+          ZOO_4LW_COMMANDS_WHITELIST: mntr,conf,ruok
+
+      solr:
+        image: solr:9
+        ports:
+          - 8983:8983
+        env:
+          ZK_HOST: zookeeper:2181
+          SOLR_HOST: localhost
+          SOLR_OPTS: "-Dsolr.environment=dev,label=DEV+ENV"
+        options: -e cloud
 
     steps:
       - name: Disable GIT TLS verification
@@ -59,6 +64,8 @@ jobs:
         env:
           CICD_GITHUB_USERNAME_MAVEN: ${{ secrets.CICD_GITHUB_USERNAME_MAVEN }}
           CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }}
+          RODA_CORE_SOLR_TYPE: CLOUD
+          RODA_CORE_SOLR_CLOUD_URLS: localhost:2181
       
       - name: Build
         run: mvn $MAVEN_CLI_OPTS clean package -Dmaven.test.skip=true
