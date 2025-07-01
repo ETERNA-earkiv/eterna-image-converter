@@ -25,7 +25,6 @@ jobs:
           - 8983:8983
         env:
           ZK_HOST: zookeeper:2181
-          SOLR_HOST: localhost
           SOLR_OPTS: "-Dsolr.environment=dev,label=DEV+ENV"
         options: -e cloud
 
