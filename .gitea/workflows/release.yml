@@ -65,7 +65,7 @@ jobs:
           CICD_GITHUB_USERNAME_MAVEN: ${{ secrets.CICD_GITHUB_USERNAME_MAVEN }}
           CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }}
           RODA_CORE_SOLR_TYPE: CLOUD
-          RODA_CORE_SOLR_CLOUD_URLS: localhost:2181
+          RODA_CORE_SOLR_CLOUD_URLS: zookeeper:2181
       
       - name: Build
         run: mvn $MAVEN_CLI_OPTS clean package -Dmaven.test.skip=true
