@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.0]
+## [test8]
 ### Added
 - Initial release of the Image Converter plugin.
 - Batch image format conversion (JPG, PNG, TIFF)
