@@ -23,7 +23,7 @@
     <parent>
         <groupId>org.roda-project</groupId>
         <artifactId>eterna</artifactId>
-        <version>0.3.0</version>
+        <version>0.3.1-dev</version>
     </parent>
     <build>
         <plugins>
@@ -146,7 +146,7 @@
         <dependency>
             <groupId>org.roda-project</groupId>
             <artifactId>roda-core</artifactId>
-            <version>0.3.0</version>
+            <version>0.3.1-dev</version>
         </dependency>
         <dependency>
             <groupId>org.roda-project</groupId>
