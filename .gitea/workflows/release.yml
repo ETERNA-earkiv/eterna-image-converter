@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version --settings .m2/settings.xml"
-      RUNNER_TOOL_CACHE: /toolcache
 
     services:
       zookeeper:
