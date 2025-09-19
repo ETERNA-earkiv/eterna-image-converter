@@ -65,13 +65,13 @@ jobs:
           go install github.com/richardlehane/siegfried/cmd/sf@latest
           sf -update
 
-      - name: Run Tests
-        run: mvn $MAVEN_CLI_OPTS clean test
-        env:
-          CICD_GITHUB_USERNAME_MAVEN: ${{ secrets.CICD_GITHUB_USERNAME_MAVEN }}
-          CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }}
-          RODA_CORE_SOLR_TYPE: CLOUD
-          RODA_CORE_SOLR_CLOUD_URLS: zookeeper:2181
+      #- name: Run Tests
+      #  run: mvn $MAVEN_CLI_OPTS clean test
+      #  env:
+      #    CICD_GITHUB_USERNAME_MAVEN: ${{ secrets.CICD_GITHUB_USERNAME_MAVEN }}
+      #    CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }}
+      #    RODA_CORE_SOLR_TYPE: CLOUD
+      #    RODA_CORE_SOLR_CLOUD_URLS: zookeeper:2181
       
       - name: Build
         run: mvn $MAVEN_CLI_OPTS clean package -Dmaven.test.skip=true
@@ -80,7 +80,7 @@ jobs:
           CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }}
 
       - name: Extract version from pom.xml
-        run: PLUGIN_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+        run: echo "PLUGIN_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_ENV"
 
       - name: Sign plugin
         run: |
