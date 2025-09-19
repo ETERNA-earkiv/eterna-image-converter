@@ -98,7 +98,7 @@ jobs:
           PLUGIN_CA_PEM: ${{ vars.PLUGIN_CA_PEM }}
           CODE_SIGN_PEM: ${{ vars.CODE_SIGN_PEM }}
           CODE_SIGN_KEY: ${{ secrets.CODE_SIGN_KEY }}
-          JAR_FILE: ${{ vars.PLUGIN_BASENAME }}-{{ env.PLUGIN_VERSION }}.jar
+          JAR_FILE: ${{ vars.PLUGIN_BASENAME }}-${{ env.PLUGIN_VERSION }}.jar
 
       - name: Extract changelog for this release
         id: changelog
