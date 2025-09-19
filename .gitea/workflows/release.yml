@@ -65,13 +65,13 @@ jobs:
           go install github.com/richardlehane/siegfried/cmd/sf@latest
           sf -update
 
-      #- name: Run Tests
-      #  run: mvn $MAVEN_CLI_OPTS clean test
-      #  env:
-      #    CICD_GITHUB_USERNAME_MAVEN: ${{ secrets.CICD_GITHUB_USERNAME_MAVEN }}
-      #    CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }}
-      #    RODA_CORE_SOLR_TYPE: CLOUD
-      #    RODA_CORE_SOLR_CLOUD_URLS: zookeeper:2181
+      - name: Run Tests
+        run: mvn $MAVEN_CLI_OPTS clean test
+        env:
+          CICD_GITHUB_USERNAME_MAVEN: ${{ secrets.CICD_GITHUB_USERNAME_MAVEN }}
+          CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }}
+          RODA_CORE_SOLR_TYPE: CLOUD
+          RODA_CORE_SOLR_CLOUD_URLS: zookeeper:2181
       
       - name: Build
         run: mvn $MAVEN_CLI_OPTS clean package -Dmaven.test.skip=true
@@ -92,7 +92,8 @@ jobs:
           rm "./target/$PLUGIN_BASENAME.zip"
           rm "./target/$PLUGIN_BASENAME/$JAR_FILE"
           mv "./codesign/$JAR_FILE" "./target/$PLUGIN_BASENAME/$JAR_FILE"
-          zip -r "./target/$PLUGIN_BASENAME.zip" "./target/$PLUGIN_BASENAME"
+          cd "./target"
+          zip -r "./$PLUGIN_BASENAME.zip" "./$PLUGIN_BASENAME"
         env:
           PLUGIN_BASENAME: ${{ vars.PLUGIN_BASENAME }}
           PLUGIN_CA_PEM: ${{ vars.PLUGIN_CA_PEM }}
