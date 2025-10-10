@@ -8,19 +8,13 @@ Copyright (C) 2007 Free Software Foundation, Inc. <http://fsf.org/>
 
 For the full text of this license, see below.
 
-## Dependency Licenses
-### TwelveMonkeys (and related components)
-Certain dependencies, including TwelveMonkeys (used for image processing), are licensed under the **BSD 3-Clause License**.  
-Copyright (c) 2008-2020, Harald Kuhr. All rights reserved.
+## ETERNA Image Converter Plugin
 
-This license applies specifically to the bundled or integrated TwelveMonkeys library and any other components explicitly noted. For the full text of this license, see below.
+<details open>
+<summary>ETERNA Image Converter Plugin - LGPLv3 license</summary>
 
-If you have questions about which license covers a specific file or component, check the source code headers or contact the maintainers.
-
----
-
-## GNU LESSER GENERAL PUBLIC LICENSE
-### Version 3, 29 June 2007
+### GNU LESSER GENERAL PUBLIC LICENSE
+#### Version 3, 29 June 2007
 
  Copyright (C) 2007 Free Software Foundation, Inc. <http://fsf.org/>
  Everyone is permitted to copy and distribute verbatim copies
@@ -184,9 +178,16 @@ whether future versions of the GNU Lesser General Public License shall
 apply, that proxy's public statement of acceptance of any version is
 permanent authorization for you to choose that version for the
 Library.
+</details>
 
+---
 
-## BSD 3-Clause License
+## Dependencies
+
+<details>
+<summary>TwelveMonkeys ImageIO - BSD 3-Clause license</summary>
+
+### BSD 3-Clause License
 
 Copyright (c) 2008-2020, Harald Kuhr
 All rights reserved.
@@ -215,3 +216,6 @@ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+</details>
+
+---
