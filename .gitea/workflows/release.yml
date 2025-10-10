@@ -79,7 +79,28 @@ jobs:
           CICD_GITHUB_USERNAME_MAVEN: ${{ secrets.CICD_GITHUB_USERNAME_MAVEN }}
           CICD_GITHUB_TOKEN_MAVEN: ${{ secrets.CICD_GITHUB_TOKEN_MAVEN }}
 
-      
+      - name: Extract version from pom.xml
+        run: echo "PLUGIN_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_ENV
+
+      - name: Sign plugin
+        run: |
+          mkdir -p ./codesign
+          echo "$PLUGIN_CA_PEM" > ./codesign/plugin-ca.pem
+          echo "$CODE_SIGN_PEM" > ./codesign/code-sign.pem
+          echo "$CODE_SIGN_KEY" > ./codesign/code-sign.key
+          ./.gitea/workflows/bin/sign-plugin.sh
+          rm "./target/$PLUGIN_BASENAME.zip"
+          rm "./target/$PLUGIN_BASENAME/$JAR_FILE"
+          mv "./codesign/$JAR_FILE" "./target/$PLUGIN_BASENAME/$JAR_FILE"
+          cd "./target"
+          zip -r "./$PLUGIN_BASENAME.zip" "./$PLUGIN_BASENAME"
+        env:
+          PLUGIN_BASENAME: ${{ vars.PLUGIN_BASENAME }}
+          PLUGIN_CA_PEM: ${{ vars.PLUGIN_CA_PEM }}
+          CODE_SIGN_PEM: ${{ vars.CODE_SIGN_PEM }}
+          CODE_SIGN_KEY: ${{ secrets.CODE_SIGN_KEY }}
+          JAR_FILE: ${{ vars.PLUGIN_BASENAME }}-${{ env.PLUGIN_VERSION }}.jar
+
       - name: Extract changelog for this release
         id: changelog
         run: |
