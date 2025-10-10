@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <name>Image Converter</name>
     <artifactId>image-converter</artifactId>
@@ -17,13 +18,13 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <build.date>${maven.build.timestamp}</build.date>
         <maven.build.timestamp.format>yyyy-MM-dd</maven.build.timestamp.format>
-        <java_version>17</java_version>
+        <java_version>21</java_version>
         <RODA_PLUGIN>org.roda.core.plugins.external.ImageConverter</RODA_PLUGIN>
     </properties>
     <parent>
         <groupId>org.roda-project</groupId>
         <artifactId>eterna</artifactId>
-        <version>0.3.1-dev</version>
+        <version>0.4.1</version>
     </parent>
     <build>
         <plugins>
@@ -90,8 +91,10 @@
                 <version>3.6.0</version>
                 <configuration>
                     <transformers>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
+                        <transformer
+                            implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+                        <transformer
+                            implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer" />
                     </transformers>
                 </configuration>
                 <executions>
@@ -106,47 +109,47 @@
         </plugins>
         <pluginManagement>
             <plugins>
-            <plugin>
-                        <groupId>pl.project13.maven</groupId>
-                        <artifactId>git-commit-id-plugin</artifactId>
-                        <version>4.0.0</version>
-                        <executions>
-                            <execution>
-                                <id>servlet-resource</id>
-                                <goals>
-                                    <goal>revision</goal>
-                                </goals>
-                                <configuration>
-                                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                                    <generateGitPropertiesFilename>
-                                        ${project.build.directory}/${project.build.finalName}/version.json
-                                    </generateGitPropertiesFilename>
-                                    <format>json</format>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>internal-resource</id>
-                                <goals>
-                                    <goal>revision</goal>
-                                </goals>
-                                <configuration>
-                                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                                    <generateGitPropertiesFilename>
-                                        ${project.build.directory}/classes/version.json
-                                    </generateGitPropertiesFilename>
-                                    <format>json</format>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
+                <plugin>
+                    <groupId>pl.project13.maven</groupId>
+                    <artifactId>git-commit-id-plugin</artifactId>
+                    <version>4.0.0</version>
+                    <executions>
+                        <execution>
+                            <id>servlet-resource</id>
+                            <goals>
+                                <goal>revision</goal>
+                            </goals>
+                            <configuration>
+                                <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                                <generateGitPropertiesFilename>
+                                    ${project.build.directory}/${project.build.finalName}/version.json
+                                </generateGitPropertiesFilename>
+                                <format>json</format>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>internal-resource</id>
+                            <goals>
+                                <goal>revision</goal>
+                            </goals>
+                            <configuration>
+                                <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                                <generateGitPropertiesFilename>
+                                    ${project.build.directory}/classes/version.json
+                                </generateGitPropertiesFilename>
+                                <format>json</format>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
         </pluginManagement>
     </build>
     <dependencies>
         <dependency>
             <groupId>org.roda-project</groupId>
             <artifactId>roda-core</artifactId>
-            <version>0.3.1-dev</version>
+            <version>0.4.1</version>
         </dependency>
         <dependency>
             <groupId>org.roda-project</groupId>
@@ -265,21 +268,13 @@
             <version>6.3.0</version>
         </dependency>
     </dependencies>
-
-
     <dependencyManagement>
-    
-
         <dependencies>
-        
-
             <dependency>
                 <groupId>org.apache.zookeeper</groupId>
                 <artifactId>zookeeper-jute</artifactId>
                 <version>3.9.3</version>
             </dependency>
-
         </dependencies>
-
     </dependencyManagement>
 </project>
