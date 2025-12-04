@@ -71,11 +71,6 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
     TRANSCODER_MAP.put("jpeg", jpegTranscoder);
     TRANSCODER_MAP.put("tiff", new TIFFTranscoder());
 
-    pluginParameters.put(RodaConstants.PLUGIN_PARAMS_IGNORE_OTHER_FILES,
-        new PluginParameter(RodaConstants.PLUGIN_PARAMS_IGNORE_OTHER_FILES, "Ignore other files",
-            PluginParameterType.BOOLEAN, "true", false, false,
-            "Do not process files that have a different format from the indicated."));
-
     pluginParameters.put(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP,
         PluginParameter.getBuilder(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP, "Outcome",
             PluginParameterType.CONVERSION)
@@ -90,7 +85,8 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
 
   @Override
   public void init() throws PluginException {
-    System.out.println("ImageConverter init2");
+    System.out.println("ImageConverter initialized");
+    LOGGER.info("ImageConverter initialized");
     // Ensure ImageIO plugins are registered
     ImageIO.scanForPlugins();
     IIORegistry registry = IIORegistry.getDefaultInstance();
