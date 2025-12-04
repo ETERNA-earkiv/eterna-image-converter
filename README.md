@@ -1,7 +1,6 @@
-Image Converter Plugin
+Image Converter
 -----------------------
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]()  
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](LICENSE.md)
 
 A plugin for [ETERNA](https://github.com/ETERNA-earkiv/ETERNA) providing robust image format conversion for digital preservation workflows.
@@ -12,9 +11,6 @@ A plugin for [ETERNA](https://github.com/ETERNA-earkiv/ETERNA) providing robust 
 - [Features](#features-v100)
 - [What Gets Tested](#what-gets-tested)
 - [Known Limitations](#known-limitations)
-- [Prerequisites](#prerequisites)
-- [How to Build and Run](#how-to-build-and-run)
-- [Usage Example](#usage-example)
 - [Configuration](#configuration)
 - [Contributing](#contributing)
 - [License](#license)
@@ -54,51 +50,12 @@ A plugin for [ETERNA](https://github.com/ETERNA-earkiv/ETERNA) providing robust 
 
 - **Duplicate/overwrite behavior**: If multiple files with the same base name are converted to the same extension, only one may survive in the output (due to base plugin logic). Use unique file names for best results.
 - **MIME type mapping**: Some advanced MIME type to extension mappings may require further configuration.
-- **Plugin conversion logic**: Currently, all files may be copied to new representations; future versions will improve to only add converted files.
 - **Quality degradation option not supported**: The plugin excludes files that would result in quality loss during conversion:
   - **Alpha channel preservation**: Files with transparency/alpha channels are excluded when converting to formats that don't support transparency (e.g., JPEG)
   - **Bit depth preservation**: Files with higher bit depth than the target format supports are excluded to prevent data loss
   - **Animation preservation**: Animated formats (e.g., GIF) are excluded to preserve animation frames and timing
 - **No parallelization**: Conversion is currently single-threaded.
 - **Error handling**: If a format is unsupported or conversion fails, an exception is thrown and logged; failed files are skipped.
-
-## Prerequisites
-
-- Java 21 or higher
-- Maven 3.6+
-- Docker (for containerized runs)
-
-## How to build and run
-
-To build, execute:
-
-```shell
-./build.sh
-```
-
-This will run with the latest ETERNA version. If you require a different ETERNA version, e.g. vX.X.X, update the `pom.xml` parent version and execute:
-
-```shell
-./build.sh vX.X.X
-```
-
-The build script will compile the plugin and create a Docker image with the base ETERNA plus the plugin installed.
-
-To run, execute (replace `image-converter` with the project folder name if different):
-
-```shell
-docker run -p 8080:8080 image-converter:latest
-```
-
-Then open in your favorite browser: [http://localhost:8080](http://localhost:8080).
-
-### Running Tests
-
-To run the test suite:
-
-```shell
-mvn test
-```
 
 ## Configuration
 
@@ -123,7 +80,6 @@ This project is licensed under the LGPL v3 License. See [LICENSE.md](LICENSE.md)
 ## Future Improvements
 
 - Improved MIME type mapping and configuration
-- Smarter file handling to avoid unnecessary copies
 - Support for more input/output formats
 - Parallel/concurrent conversion support
 - More granular error reporting and logging
