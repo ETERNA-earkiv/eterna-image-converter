@@ -81,7 +81,7 @@ public class ImageConverterPlugin<T extends IsRODAObject> extends AbstractConver
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pcx.PCXImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.dds.DDSImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.jpeg.JPEGImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.tiff.BigTIFFImageReaderSpi());
+    // registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.tiff.BigTIFFImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.psd.PSDImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.dcx.DCXImageReaderSpi());
 
