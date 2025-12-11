@@ -1,8 +1,8 @@
-# ImageConverterTest.java — Test Documentation
+# ImageConverterPluginTest.java — Test Documentation
 
 ## Overview
 
-This test verifies the functionality of the `ImageConverter` plugin in the ETERNA system. It ensures that image files in various formats can be converted to supported output formats (e.g., `jpg`, `png`, `tiff`) and that the conversion is both complete and correct.
+This test verifies the functionality of the `ImageConverterPlugin` in the ETERNA system. It ensures that image files in various formats can be converted to supported output formats (e.g., `jpg`, `png`, `tiff`) and that the conversion is both complete and correct.
 
 ## What Gets Tested
 
@@ -13,7 +13,7 @@ This test verifies the functionality of the `ImageConverter` plugin in the ETERN
 - **Conversion for Each Supported Format:**
   - For each supported output format (as reported by the plugin), the test:
     - Excludes files that are already in the target format or are in a list of known unsupported formats.
-    - Runs the `ImageConverter` plugin to convert all eligible files to the target format.
+    - Runs the `ImageConverterPlugin` to convert all eligible files to the target format.
     - Runs the Siegfried plugin to characterize the converted files and populate their format metadata.
     - Validates that the correct number of new preservation representations were created for the conversion.
     - Validates that each converted file:
@@ -61,4 +61,4 @@ This test verifies the functionality of the `ImageConverter` plugin in the ETERN
 
 ## Summary
 
-This test ensures that the `ImageConverter` plugin correctly converts eligible files to supported formats, excludes unsupported or already-converted files, and validates the results using both extension and MIME type. It is designed to be robust and extensible as the plugin evolves. 
+This test ensures that the `ImageConverterPlugin` correctly converts eligible files to supported formats, excludes unsupported or already-converted files, and validates the results using both extension and MIME type. It is designed to be robust and extensible as the plugin evolves. 

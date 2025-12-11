@@ -30,12 +30,16 @@ A plugin for [ETERNA](https://github.com/ETERNA-earkiv/ETERNA) providing robust 
 - **PNG**: Lossless compression format well-suited for images with sharp lines, text, and graphics. It preserves image quality during compression and is a good choice for archival of digital art, logos, and screenshots.
 - **TIFF**: A flexible image format that can store images with lossless compression (or no compression at all). It is ideal for archival purposes because it preserves maximum image quality and supports metadata. Results in larger file sizes.
 
-## Features (v1.0.0)
+## Features (v1.1.0)
 
 - **Batch image format conversion**: Converts a wide range of raster image formats to preservation-friendly formats (`jpg`, `png`, `tiff`).
 - **SVG conversion**: Converts SVG and SVGZ images to supported raster formats using Batik.
 - **Automatic format detection**: Uses ImageIO for input detection and Siegfried for post-conversion format validation.
 - **Preservation representation creation**: Each conversion creates a new representation for the converted files.
+- **Lossy format normalization**: Includes color-space conversions, bit-depth down-sampling with dithering, and alpha channel removal for optimal preservation.
+- **Enhanced multi-image file handling**: Explicit loading of first image from multi-image files (animated GIFs, ICO files with different dimensions).
+- **Improved error handling**: More lenient image loading with better error recovery and logging.
+- **Format-specific properties management**: Uses ImageFormatProperties record for managing format-specific conversion properties.
 - **Unit tested**: Comprehensive test suite ensures correct conversion, exclusion, and validation logic.
 
 ## What Gets Tested
@@ -45,17 +49,6 @@ A plugin for [ETERNA](https://github.com/ETERNA-earkiv/ETERNA) providing robust 
 - Conversion for each supported output format
 - Exclusion of unsupported and already-converted files
 - Validation of output file extension and MIME type
-
-## Known Limitations
-
-- **Duplicate/overwrite behavior**: If multiple files with the same base name are converted to the same extension, only one may survive in the output (due to base plugin logic). Use unique file names for best results.
-- **MIME type mapping**: Some advanced MIME type to extension mappings may require further configuration.
-- **Quality degradation option not supported**: The plugin excludes files that would result in quality loss during conversion:
-  - **Alpha channel preservation**: Files with transparency/alpha channels are excluded when converting to formats that don't support transparency (e.g., JPEG)
-  - **Bit depth preservation**: Files with higher bit depth than the target format supports are excluded to prevent data loss
-  - **Animation preservation**: Animated formats (e.g., GIF) are excluded to preserve animation frames and timing
-- **No parallelization**: Conversion is currently single-threaded.
-- **Error handling**: If a format is unsupported or conversion fails, an exception is thrown and logged; failed files are skipped.
 
 ## Configuration
 
@@ -76,10 +69,3 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 ## License
 
 This project is licensed under the LGPL v3 License. See [LICENSE.md](LICENSE.md) for details.
-
-## Future Improvements
-
-- Improved MIME type mapping and configuration
-- Support for more input/output formats
-- Parallel/concurrent conversion support
-- More granular error reporting and logging

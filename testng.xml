@@ -3,7 +3,7 @@
 <suite name="AllTests" verbose="1">
 	<test name="default">
 		<classes>
-			<class name="org.roda.core.plugins.ImageConverterTest" />
+			<class name="org.roda.core.plugins.ImageConverterPluginTest" />
 		</classes>
 	</test>
 </suite>

@@ -1,323 +1,259 @@
-/**
- * The contents of this file are subject to the license and copyright
- * detailed in the LICENSE.md file at the root of the source
- * tree
- */
 package org.roda.core.plugins.external;
-
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import javax.imageio.ImageIO;
-import javax.imageio.spi.IIORegistry;
-
-import org.roda.core.RodaCoreFactory;
-import org.roda.core.common.FileFormatUtils;
-import org.roda.core.data.common.RodaConstants;
-import org.roda.core.data.exceptions.InvalidParameterException;
-import org.roda.core.data.v2.IsRODAObject;
-import org.roda.core.data.v2.jobs.PluginParameter;
-import org.roda.core.data.v2.jobs.PluginParameter.PluginParameterType;
-import org.roda.core.data.v2.jobs.Report;
-import org.roda.core.index.IndexService;
-import org.roda.core.model.ModelService;
-import org.roda.core.plugins.Plugin;
-import org.roda.core.plugins.PluginException;
-import org.roda.core.plugins.base.conversion.AbstractConvertPlugin;
-import org.roda.core.storage.StorageService;
-import org.roda.core.util.CommandException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.apache.batik.transcoder.TranscoderInput;
 import org.apache.batik.transcoder.TranscoderOutput;
-import org.apache.batik.transcoder.image.PNGTranscoder;
 import org.apache.batik.transcoder.image.JPEGTranscoder;
+import org.apache.batik.transcoder.image.PNGTranscoder;
 import org.apache.batik.transcoder.image.TIFFTranscoder;
+import org.roda.core.util.CommandException;
 
-/**
- * Plugin for converting image formats
- */
-@SuppressWarnings("deprecation")
-public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugin<T> {
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReadParam;
+import javax.imageio.ImageReader;
+import javax.imageio.ImageTypeSpecifier;
+import javax.imageio.ImageWriter;
+import javax.imageio.spi.ImageWriterSpi;
+import javax.imageio.stream.ImageInputStream;
+import java.awt.*;
+import java.awt.color.ColorSpace;
+import java.awt.image.BufferedImage;
+import java.awt.image.ColorConvertOp;
+import java.awt.image.ColorModel;
+import java.awt.image.DataBuffer;
+import java.awt.image.SampleModel;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ImageConverter.class);
+public class ImageConverter {
+    private static final Map<String, ImageFormatProperties> imageFormatProperties;
+    private static final Map<String, org.apache.batik.transcoder.Transcoder> TRANSCODER_MAP = new HashMap<>();
 
-  private static final String CONVERSION_PROFILE_PARAM_KEY = "parameter.conversion_profile";
+    static {
+        imageFormatProperties = new HashMap<>();
+        imageFormatProperties.put("jpg", new ImageFormatProperties(8, false));
+        imageFormatProperties.put("png", new ImageFormatProperties(16, true));
+        imageFormatProperties.put("tiff", new ImageFormatProperties(-1, true));
 
-  private static Map<String, PluginParameter> pluginParameters = new LinkedHashMap<>();
+        JPEGTranscoder jpegTranscoder = new JPEGTranscoder();
+        // Set high quality (95%) for preservation purposes - balances file size with
+        // image quality
+        // Higher than default (80%) to maintain visual fidelity while still providing
+        // compression benefits
+        // Note: This setting only affects SVG-to-JPEG conversions, not regular image
+        // conversions
+        jpegTranscoder.addTranscodingHint(JPEGTranscoder.KEY_QUALITY, 0.95f);
 
-  private static final Map<String, org.apache.batik.transcoder.Transcoder> TRANSCODER_MAP = new HashMap<>();
-
-  static {
-    TRANSCODER_MAP.put("png", new PNGTranscoder());
-    JPEGTranscoder jpegTranscoder = new JPEGTranscoder();
-    // Set high quality (95%) for preservation purposes - balances file size with
-    // image quality
-    // Higher than default (80%) to maintain visual fidelity while still providing
-    // compression benefits
-    // Note: This setting only affects SVG-to-JPEG conversions, not regular image
-    // conversions
-    jpegTranscoder.addTranscodingHint(JPEGTranscoder.KEY_QUALITY, 0.95f);
-    TRANSCODER_MAP.put("jpg", jpegTranscoder);
-    TRANSCODER_MAP.put("jpeg", jpegTranscoder);
-    TRANSCODER_MAP.put("tiff", new TIFFTranscoder());
-
-    pluginParameters.put(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP,
-        PluginParameter.getBuilder(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP, "Outcome",
-            PluginParameterType.CONVERSION)
-            .withDescription(
-                "A conversion can create a representation or a dissemination. Please choose which option to output")
-            .build());
-  }
-
-  public ImageConverter() {
-    super();
-  }
-
-  @Override
-  public void init() throws PluginException {
-    System.out.println("ImageConverter initialized");
-    LOGGER.info("ImageConverter initialized");
-    // Ensure ImageIO plugins are registered
-    ImageIO.scanForPlugins();
-    IIORegistry registry = IIORegistry.getDefaultInstance();
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.xwd.XWDImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.bmp.CURImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.bmp.ICOImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.bmp.BMPImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pict.PICTImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pnm.PAMImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.icns.ICNSImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.hdr.HDRImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.tiff.TIFFImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.tga.TGAImageReaderSpi());
-    // registry.registerServiceProvider(new
-    // com.twelvemonkeys.imageio.plugins.svg.SVGImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.sgi.SGIImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pnm.PNMImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pnm.PNMImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pcx.PCXImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.dds.DDSImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.jpeg.JPEGImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.tiff.BigTIFFImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.psd.PSDImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.dcx.DCXImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.dcx.DCXImageReaderSpi());
-  }
-
-  @Override
-  public String getName() {
-    return "Image Converter";
-  }
-
-  @Override
-  public String getDescription() {
-    return "Image format conversion plugin that supports a wide range of input and output formats. " +
-        "Uses the TwelveMonkeys ImageIO library to handle legacy and specialized image formats. " +
-        "Includes specialized SVG conversion support using Apache Batik transcoders. " +
-        "Ideal for digital preservation workflows and format migration.";
-  }
-
-  @Override
-  public String getVersionImpl() {
-    // Get from pom.xml <version>
-    return getClass().getPackage().getImplementationVersion();
-  }
-
-  @Override
-  public Plugin<T> cloneMe() {
-    return new ImageConverter<T>();
-  }
-
-  @Override
-  protected Map<String, PluginParameter> getDefaultParameters() {
-    return pluginParameters.entrySet().stream()
-        .collect(Collectors.toMap(
-            Map.Entry::getKey,
-            e -> new PluginParameter(e.getValue()),
-            (u, v) -> u,
-            LinkedHashMap::new));
-  }
-
-  @Override
-  public List<PluginParameter> getParameters() {
-    return this.orderParameters(this.getDefaultParameters());
-  }
-
-  @Override
-  protected List<PluginParameter> orderParameters(Map<String, PluginParameter> params) {
-    return this.getDefaultParameters().values().stream().collect(Collectors.toList());
-  }
-
-  @Override
-  public void setParameterValues(Map<String, String> parameters) throws InvalidParameterException {
-    String profileValue = parameters.get(CONVERSION_PROFILE_PARAM_KEY);
-    if (profileValue == null || profileValue.trim().isEmpty()) {
-      LOGGER.warn("Conversion profile parameter '{}' is missing or empty in the provided parameters.",
-          CONVERSION_PROFILE_PARAM_KEY);
-      throw new InvalidParameterException(
-          "Required conversion profile parameter '" + CONVERSION_PROFILE_PARAM_KEY + "' is missing.");
-    }
-    profileValue = profileValue.trim().toLowerCase();
-    parameters.put("parameter.option." + profileValue, "[parameter.output_format]");
-    parameters.put(RodaConstants.PLUGIN_PARAMS_OUTPUT_FORMAT, profileValue);
-    LOGGER.debug("Setting output format from conversion profile parameter '{}': {}", CONVERSION_PROFILE_PARAM_KEY,
-        profileValue);
-    super.setParameterValues(parameters);
-  }
-
-  @Override
-  public boolean areParameterValuesValid() {
-    // Validate based on the parameter *after* setParameterValues has run
-    Map<String, String> params = getParameterValues();
-
-    // Check if the base class successfully stored the rep/dip choice
-    boolean repDipSet = params.containsKey(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP)
-        && !params.get(RodaConstants.PLUGIN_PARAMS_REPRESENTATION_OR_DIP).isEmpty();
-
-    // Check if the output format was successfully set
-    boolean outputFormatSet = super.getOutputFormat() != null && !super.getOutputFormat().isEmpty();
-
-    if (!repDipSet) {
-      LOGGER.error("Validation failed: REPRESENTATION_OR_DIP parameter is missing or empty.");
-    }
-    if (!outputFormatSet) {
-      LOGGER.error("Validation failed: Output format could not be determined (was {} parameter set correctly?).",
-          CONVERSION_PROFILE_PARAM_KEY);
+        TRANSCODER_MAP.put("png", new PNGTranscoder());
+        TRANSCODER_MAP.put("jpg", jpegTranscoder);
+        TRANSCODER_MAP.put("jpeg", jpegTranscoder);
+        TRANSCODER_MAP.put("tiff", new TIFFTranscoder());
     }
 
-    return repDipSet && outputFormatSet;
-  }
+    public static void convert(final Path inputPath, final Path outputPath, final String outputFormat) throws CommandException {
+        // Check if input is SVG
+        String inputLower = inputPath.toString().toLowerCase();
+        if (inputLower.endsWith(".svg") || inputLower.endsWith(".svgz")) {
+            convertSvg(inputPath, outputPath, outputFormat);
+            return;
+        }
 
-  @Override
-  public Report beforeAllExecute(IndexService index, ModelService model, StorageService storage) {
-    return new Report();
-  }
+        final BufferedImage srcImage = readImage(inputPath);
+        final BufferedImage dstImage = normalizeImageForFormat(srcImage, outputFormat);
 
-  @Override
-  public Report afterAllExecute(IndexService index, ModelService model, StorageService storage) {
-    return new Report();
-  }
-
-  @Override
-  public List<String> getApplicableTo() {
-    return FileFormatUtils.getInputExtensions("image-converter");
-  }
-
-  @Override
-  public List<String> getConvertableTo() {
-    String outputFormats = RodaCoreFactory.getRodaConfigurationAsString("core", "tools", "image-converter",
-        "outputFormats");
-    return Arrays.asList(outputFormats.split("\\s+"));
-  }
-
-  @Override
-  public Map<String, List<String>> getPronomToExtension() {
-    return FileFormatUtils.getPronomToExtension("image-converter");
-  }
-
-  @Override
-  public Map<String, List<String>> getMimetypeToExtension() {
-    return FileFormatUtils.getMimetypeToExtension("image-converter");
-  }
-
-  /**
-   * Get the list of file extensions that should be excluded from conversion.
-   * These are formats that are known to cause issues or are not supported.
-   * Currently only used for testing purposes - not implemented in main conversion
-   * logic.
-   * 
-   * @return List of excluded file extensions
-   */
-  public List<String> getExcludedExtensions() {
-    String excludedExtensions = RodaCoreFactory.getRodaConfigurationAsString("core", "tools", "image-converter",
-        "excludedExtensions");
-    if (excludedExtensions == null || excludedExtensions.trim().isEmpty()) {
-      return new ArrayList<>();
-    }
-    return Arrays.asList(excludedExtensions.split("\\s+"));
-  }
-
-  @Override
-  public String executePlugin(java.nio.file.Path inputPath, java.nio.file.Path outputPath, String fileFormat)
-      throws UnsupportedOperationException, IOException, CommandException {
-    LOGGER.info("Starting image conversion: {} -> {} ({})", inputPath, outputPath, fileFormat);
-
-    String outputFormat = super.getOutputFormat();
-
-    if (outputFormat == null || outputFormat.trim().isEmpty()) {
-      throw new CommandException("Output format was not set correctly in the plugin parameters.");
+        boolean success;
+        try {
+            success = ImageIO.write(dstImage, outputFormat, outputPath.toFile());
+        } catch (IOException e) {
+            throw new CommandException("Could not write output image file: " + outputPath + ". Format '" + outputFormat
+                    + "' might be unsupported by available writers.");
+        }
+        if (!success) {
+            throw new CommandException("Could not write output image file: " + outputPath + ". Format '" + outputFormat
+                    + "' might be unsupported by available writers.");
+        }
     }
 
-    LOGGER.info("Executing image conversion: {} -> {} (Output Format: {})", inputPath, outputPath, outputFormat);
+    private static void convertSvg(Path inputPath, Path outputPath, String outputFormat) throws CommandException {
+        try {
+            // Get the appropriate transcoder
+            org.apache.batik.transcoder.Transcoder transcoder = TRANSCODER_MAP.get(outputFormat.toLowerCase());
+            if (transcoder == null) {
+                throw new CommandException("Unsupported output format for SVG conversion: " + outputFormat);
+            }
 
-    // Check if input is SVG
-    String inputLower = inputPath.toString().toLowerCase();
-    if (inputLower.endsWith(".svg") || inputLower.endsWith(".svgz")) {
-      return convertSvg(inputPath, outputPath, outputFormat);
+            // Create transcoder input/output
+            String svgURI = inputPath.toUri().toURL().toString();
+            TranscoderInput input = new TranscoderInput(svgURI);
+
+            try (OutputStream ostream = java.nio.file.Files.newOutputStream(outputPath)) {
+                TranscoderOutput output = new TranscoderOutput(ostream);
+                transcoder.transcode(input, output);
+            }
+
+            ImageConverterPlugin.LOGGER.info("Successfully converted SVG to {}", outputPath);
+        } catch (Exception e) {
+            ImageConverterPlugin.LOGGER.error("SVG conversion failed: {}", e.getMessage(), e);
+            throw new CommandException(String.format("Error! Could not convert SVG to %s.", outputFormat.toUpperCase()));
+        }
     }
 
-    BufferedImage image = null;
-    boolean success = false;
-    try {
-      image = ImageIO.read(inputPath.toFile());
+    private static BufferedImage readImage(final Path inputPath) throws CommandException {
+        if (inputPath == null) {
+            throw new CommandException("Input image path is not defined.");
+        }
 
-      if (image == null) {
-        throw new IOException(
-            "Could not read input image file: " + inputPath + ". Format might be unsupported or file is corrupted.");
-      }
-      success = ImageIO.write(image, outputFormat, outputPath.toFile());
+        try (ImageInputStream imageInputStream = ImageIO.createImageInputStream(inputPath.toFile())) {
+            if (imageInputStream == null) {
+                throw new CommandException("Could not open image file.");
+            }
 
-      if (!success) {
-        throw new IOException("Could not write output image file: " + outputPath + ". Format '" + outputFormat
-            + "' might be unsupported by available writers.");
-      }
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
+            if (!readers.hasNext()) {
+                throw new CommandException("Unsupported input image format.");
+            }
 
-      LOGGER.info("Successfully converted image to {}", outputPath);
-      return outputPath.toString();
+            final ImageReader reader = readers.next();
+            reader.setInput(imageInputStream);
 
-    } catch (IOException e) {
-      LOGGER.error("Image conversion failed: {}", e.getMessage(), e);
-      throw e;
-    } catch (Exception e) {
-      LOGGER.error("An unexpected error occurred during image conversion: {}", e.getMessage(), e);
-      throw new IOException("Unexpected error during conversion: " + e.getMessage(), e);
+            int width;
+            int height;
+            ImageTypeSpecifier srcImageTypeSpecifier;
+            try {
+                width = reader.getWidth(0);
+                height = reader.getHeight(0);
+                srcImageTypeSpecifier = reader.getRawImageType(0);
+            } catch (Exception e) {
+                throw new CommandException("Could not read image data.");
+            }
+
+            BufferedImage image;
+            try {
+                image = srcImageTypeSpecifier.createBufferedImage(width, height);
+            } catch (Exception e) {
+                if (width < 0) {
+                    throw new CommandException("Input image has a negative width.");
+                } else if (height < 0) {
+                    throw new CommandException("Input image has a negative height.");
+                } else if(((long)width) * ((long)height) > Integer.MAX_VALUE) {
+                    throw new CommandException("Input image is too large.");
+                } else {
+                    throw new CommandException("Could not allocate memory for image conversion.");
+                }
+            }
+
+            final ImageReadParam param = reader.getDefaultReadParam();
+            param.setDestination(image);
+
+            try {
+                reader.read(0, param);
+            } catch (Exception e) {
+                throw new CommandException("Could not read input image file: " + inputPath + ". Format might be unsupported or file is corrupted.");
+            }
+
+            return image;
+        } catch (IOException e) {
+            throw new CommandException("Could not read input image file: " + inputPath.toFile() + ".");
+        }
     }
-  }
 
-  private String convertSvg(java.nio.file.Path inputPath, java.nio.file.Path outputPath, String outputFormat)
-      throws IOException, CommandException {
-    try {
-      // Get the appropriate transcoder
-      org.apache.batik.transcoder.Transcoder transcoder = TRANSCODER_MAP.get(outputFormat.toLowerCase());
-      if (transcoder == null) {
-        throw new CommandException("Unsupported output format for SVG conversion: " + outputFormat);
-      }
+    private static Boolean isImageSupportedByWriter(final BufferedImage image, final String formatName) {
+        Iterator<ImageWriter> it = ImageIO.getImageWritersByFormatName(formatName);
+        while (it.hasNext()) {
+            ImageWriter imageWriter = it.next();
+            ImageWriterSpi spi = imageWriter.getOriginatingProvider();
 
-      // Create transcoder input/output
-      String svgURI = inputPath.toUri().toURL().toString();
-      TranscoderInput input = new TranscoderInput(svgURI);
-
-      try (OutputStream ostream = java.nio.file.Files.newOutputStream(outputPath)) {
-        TranscoderOutput output = new TranscoderOutput(ostream);
-        transcoder.transcode(input, output);
-      }
-
-      LOGGER.info("Successfully converted SVG to {}", outputPath);
-      return outputPath.toString();
-
-    } catch (Exception e) {
-      LOGGER.error("SVG conversion failed: {}", e.getMessage(), e);
-      throw new IOException("Error converting SVG: " + e.getMessage(), e);
+            if (spi.canEncodeImage(image)) {
+                return true;
+            }
+        }
+        return false;
     }
-  }
+
+    private static int getMaximumBitDepth(final SampleModel sampleModel) {
+        int[] sampleSize = sampleModel.getSampleSize();
+        int bitDepth = sampleSize[0];
+        for (int i = 1; i < sampleSize.length; i++) {
+            if (sampleSize[i] > bitDepth) {
+                bitDepth = sampleSize[i];
+            }
+        }
+
+        return bitDepth;
+    }
+
+    private static BufferedImage convertARGB2RGB(final BufferedImage srcImage) {
+        final BufferedImage dstImage = new BufferedImage(srcImage.getWidth(), srcImage.getHeight(), BufferedImage.TYPE_INT_RGB);
+        final int height = srcImage.getHeight();
+        final int width =  srcImage.getWidth();
+        final int backgroundColor = 0xFFFFFF;
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                final int argb = srcImage.getRGB(x, y);
+                final int alpha = (argb >> 24) & 0xFF;
+
+                if (alpha == 255) {
+                    dstImage.setRGB(x, y, argb & 0xFFFFFF);
+                } else if (alpha == 0) {
+                    dstImage.setRGB(x, y, backgroundColor);
+                } else {
+                    int r = ((argb >> 16) & 0xFF);
+                    int g = ((argb >> 8) & 0xFF);
+                    int b = (argb & 0xFF);
+
+                    int br = (backgroundColor >> 16) & 0xFF;
+                    int bg = (backgroundColor >> 8) & 0xFF;
+                    int bb = backgroundColor & 0xFF;
+
+                    r = (r * alpha + br * (255 - alpha)) / 255;
+                    g = (g * alpha + bg * (255 - alpha)) / 255;
+                    b = (b * alpha + bb * (255 - alpha)) / 255;
+
+                    dstImage.setRGB(x, y, (r << 16) | (g << 8) | b);
+                }
+            }
+        }
+
+        return dstImage;
+    }
+
+    private static BufferedImage normalizeImageForFormat(final BufferedImage srcImage, final String outputFormatName) {
+        final ImageFormatProperties dstImageFormatProperties = imageFormatProperties.get(outputFormatName);
+        if (isImageSupportedByWriter(srcImage, outputFormatName) && srcImage.getColorModel().hasAlpha() == dstImageFormatProperties.supportsAlpha()) {
+            return srcImage;
+        }
+
+        final ColorModel srcColorModel = srcImage.getColorModel();
+        final ColorSpace srcColorSpace = srcColorModel.getColorSpace();
+        final SampleModel srcSampleModel = srcImage.getSampleModel();
+        final int srcBitDepth = getMaximumBitDepth(srcSampleModel);
+        final int dstMaximumBitDepth = dstImageFormatProperties.maximumBitDepth();
+
+        BufferedImage image = srcImage;
+
+        if (!srcColorSpace.isCS_sRGB() || srcSampleModel.getDataType() == DataBuffer.TYPE_FLOAT || (dstMaximumBitDepth != -1 && srcBitDepth > dstMaximumBitDepth)) {
+            final int bufferedImageType = srcColorModel.hasAlpha() || srcColorModel.getTransparency() != Transparency.OPAQUE ? BufferedImage.TYPE_INT_ARGB : BufferedImage.TYPE_INT_RGB;
+            final ImageTypeSpecifier imageTypeSpecifier = ImageTypeSpecifier.createFromBufferedImageType(bufferedImageType);
+            image = imageTypeSpecifier.createBufferedImage(srcImage.getWidth(), srcImage.getHeight());
+
+            final Map<RenderingHints.Key, Object> renderingHints = new HashMap<>();
+            renderingHints.put(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+            renderingHints.put(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
+            renderingHints.put(RenderingHints.KEY_DITHERING, RenderingHints.VALUE_DITHER_ENABLE);
+
+            ColorConvertOp op = new ColorConvertOp(ColorSpace.getInstance(ColorSpace.CS_sRGB), new RenderingHints(renderingHints));
+            op.filter(srcImage, image);
+        }
+
+        BufferedImage dstImage = image;
+        if (srcColorModel.hasAlpha() && !dstImageFormatProperties.supportsAlpha()) {
+            dstImage = convertARGB2RGB(image);
+        }
+
+        return dstImage;
+    }
 }

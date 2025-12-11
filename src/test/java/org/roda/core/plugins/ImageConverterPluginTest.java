@@ -40,7 +40,7 @@ import org.roda.core.index.IndexService;
 import org.roda.core.index.IndexTestUtils;
 import org.roda.core.model.ModelService;
 import org.roda.core.plugins.base.characterization.SiegfriedPlugin;
-import org.roda.core.plugins.external.ImageConverter;
+import org.roda.core.plugins.external.ImageConverterPlugin;
 import org.roda.core.storage.ContentPayload;
 import org.roda.core.storage.StorageService;
 import org.roda.core.storage.fs.FSPathContentPayload;
@@ -57,8 +57,8 @@ import org.testng.annotations.Test;
 import jodd.net.MimeTypes;
 
 @Test(groups = { RodaConstants.TEST_GROUP_ALL, RodaConstants.TEST_GROUP_TRAVIS })
-public class ImageConverterTest {
-	private static final Logger LOGGER = LoggerFactory.getLogger(ImageConverterTest.class);
+public class ImageConverterPluginTest {
+	private static final Logger LOGGER = LoggerFactory.getLogger(ImageConverterPluginTest.class);
 
 	private static Path basePath;
 	private static ModelService model;
@@ -73,7 +73,7 @@ public class ImageConverterTest {
 	private int sampleCount;
 	private AIP aip;
 	private Representation rep;
-	private ImageConverter<IndexedFile> imageConverter;
+	private ImageConverterPlugin<IndexedFile> imageConverterPlugin;
 	private List<String> formatsToTest;
 	// Extensions that should be excluded from conversion (e.g., unsupported
 	// formats)
@@ -97,9 +97,9 @@ public class ImageConverterTest {
 		index = RodaCoreFactory.getIndexService();
 
 		RodaCoreFactory.addConfiguration("image-converter.properties");
-		RodaCoreFactory.getPluginManager().registerPlugin(new ImageConverter());
+		RodaCoreFactory.getPluginManager().registerPlugin(new ImageConverterPlugin());
 
-		URL corporaURL = ImageConverterTest.class.getResource("/corpora");
+		URL corporaURL = ImageConverterPluginTest.class.getResource("/corpora");
 		corporaService = new FileStorageService(Paths.get(corporaURL.toURI()));
 		corporaPath = Paths.get(corporaURL.toURI());
 		FileUtils.deleteDirectory(new File("/tmp/test"));
@@ -133,11 +133,11 @@ public class ImageConverterTest {
 
 		index.commitAIPs();
 
-		imageConverter = new ImageConverter<>();
-		formatsToTest = imageConverter.getConvertableTo();
-		baseExcludedExtensions = imageConverter.getExcludedExtensions();
+		imageConverterPlugin = new ImageConverterPlugin<>();
+		formatsToTest = imageConverterPlugin.getConvertableTo();
+		baseExcludedExtensions = imageConverterPlugin.getExcludedExtensions();
 
-		LOGGER.info("Running ImageConverter Plugin tests under storage {}", basePath);
+		LOGGER.info("Running ImageConverterPlugin tests under storage {}", basePath);
 	}
 
 	@AfterMethod
@@ -232,16 +232,16 @@ public class ImageConverterTest {
 					"type=rep;value=mixed;markAsPreservation=true");
 			parameters.put(RodaConstants.PLUGIN_PARAMS_CONVERSION_PROFILE, format);
 
-			// Run ImageConverter plugin
+			// Run ImageConverterPlugin
 			@SuppressWarnings("unchecked")
-			Job job = TestsHelper.executeJob(ImageConverter.class, parameters,
+			Job job = TestsHelper.executeJob(ImageConverterPlugin.class, parameters,
 					PluginType.AIP_TO_AIP,
 					files);
 
 			index.commitAIPs();
 
 			Assert.assertEquals(job.getJobStats().getCompletionPercentage(), 100,
-					"ImageConverter job did not complete");
+					"ImageConverterPlugin job did not complete");
 			Assert.assertEquals(job.getJobStats().getSourceObjectsProcessedWithSuccess(),
 					sampleCount - totalExcludedCount, "Should process all files");
 
@@ -304,12 +304,12 @@ public class ImageConverterTest {
 				String fileFormat = ifile.getId().substring(ifile.getId().lastIndexOf('.') + 1);
 
 				// Get plugin format information
-				// List<String> applicableTo = imageConverter.getApplicableTo();
-				List<String> convertableTo = imageConverter.getConvertableTo();
+				// List<String> applicableTo = imageConverterPlugin.getApplicableTo();
+				List<String> convertableTo = imageConverterPlugin.getConvertableTo();
 				// Map<String, List<String>> pronomToExtension =
-				// imageConverter.getPronomToExtension();
+				// imageConverterPlugin.getPronomToExtension();
 				// Map<String, List<String>> mimetypeToExtension =
-				// imageConverter.getMimetypeToExtension();
+				// imageConverterPlugin.getMimetypeToExtension();
 
 				// Validate the converted file format
 				String expectedMimeType = MimeTypes.lookupMimeType(format);

@@ -27,9 +27,10 @@ You can convert images to three preservation formats:
 
 ### Conversion Process
 1. **Format detection**: The tool automatically detects the input format
-2. **Quality assessment**: Files are evaluated to ensure no quality loss occurs during conversion
-3. **Conversion execution**: Images are converted using specialized libraries for optimal results
-4. **Representation creation**: During conversion, the new files will be placed in the same intellectual entity as the originals, in a representation with the chosen representation type and status: `Preservation`. If such a representation does not already exist in the intellectual entity, a new one will be created.
+2. **Image normalization**: Images are automatically adjusted for the target format, including handling transparency, color spaces, and bit depths as needed
+3. **Quality assessment**: Files are evaluated to ensure minimal quality loss occurs during conversion
+4. **Conversion execution**: Images are converted using specialized libraries for optimal results
+5. **Representation creation**: During conversion, the new files will be placed in the same intellectual entity as the originals, in a representation with the chosen representation type and status: `Preservation`. If such a representation does not already exist in the intellectual entity, a new one will be created.
 
 ## Known Limitations
 
@@ -39,6 +40,9 @@ You can convert images to three preservation formats:
 
 ### Quality Settings
 - SVG to JPG conversions use 95% quality setting to balance file size and visual fidelity
+- Images with transparency are automatically blended with a white background when converting to JPG format
+- Color spaces are automatically converted to sRGB standard when needed for compatibility
+- Bit depths are adjusted to match format requirements (e.g., reducing high-bit depth images for JPG compatibility)
 - Other conversions maintain the highest possible quality for the selected format
 
 ## Best Practices
@@ -51,14 +55,28 @@ You can convert images to three preservation formats:
 
 ## Troubleshooting
 
-- **Conversion fails**: Check that the input format is supported and that the file is not corrupted.  
-    Other possible causes of quality degradation may include:
-    - **Transparent images**: Files with alpha channels (transparency) are excluded when converting to JPG format
-    - **High bit depth**: Images with bit depth higher than what the target format supports are excluded
-    - **Animated formats**: Animated images (such as GIF) are excluded to preserve animation frames
-    - **Unsupported formats**: Files with file extensions known to cause problems (cur, pict, ico, dds, pfm, hdr)
-- **Files not converted**: Verify that the file is not in an excluded category or already in the target format
-- **Quality issues**: Ensure you are using an appropriate output format for your content type
-- **Large file sizes**: TIFF format will produce larger files but preserves maximum quality
+### Common Issues
 
-For technical support or questions about specific formats, contact your system administrator.
+**Conversion Fails**
+- **Cause**: Input format not supported or file corrupted
+- **Solution**: Verify the file format is supported and check file integrity
+
+**Files Not Converted**
+- **Cause**: File already in target format or in excluded category
+- **Solution**: Check if conversion is actually needed
+
+**Unexpected Results**
+- **Transparent images**: Alpha channels are blended with white background for JPG conversion
+- **High bit depth images**: Automatically adjusted to match target format capabilities
+- **Color variations**: Images converted to standard sRGB color space when needed
+
+**Performance Issues**
+- **Large file sizes**: TIFF format preserves maximum quality but creates larger files
+- **Slow processing**: High-resolution or complex images take longer to process
+
+### Additional Notes
+
+- **Format selection**: Choose appropriate output format for your content type (TIFF for archiving, PNG for graphics, JPG for photos)
+- **Unsupported formats**: Some file formats are not supported and cannot be converted
+
+For technical support or questions about specific formats, contact your system administrator or raise an issue on our GitHub repository.
