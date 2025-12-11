@@ -87,6 +87,10 @@ public class ImageConverterPlugin<T extends IsRODAObject> extends AbstractConver
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.psd.PSDImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.dcx.DCXImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.dcx.DCXImageReaderSpi());
+
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.jpeg.JPEGImageWriterSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.tiff.TIFFImageWriterSpi());
+    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.tiff.BigTIFFImageWriterSpi());
   }
 
   @Override
@@ -223,7 +227,7 @@ public class ImageConverterPlugin<T extends IsRODAObject> extends AbstractConver
   }
 
   @Override
-  public String executePlugin(Path inputPath, Path outputPath, String fileFormat) throws  CommandException {
+  public String executePlugin(Path inputPath, Path outputPath, String fileFormat) throws CommandException {
     LOGGER.info("Starting image conversion: {} -> {} ({})", inputPath, outputPath, fileFormat);
 
     final String outputFormat = super.getOutputFormat();
