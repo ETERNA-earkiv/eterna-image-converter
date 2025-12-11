@@ -275,7 +275,10 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
         throw new IOException(
             "Could not read input image file: " + inputPath + ". Format might be unsupported or file is corrupted.");
       }
-      success = ImageIO.write(image, outputFormat, outputPath.toFile());
+
+      BufferedImage dstImage = ImageUtils.normalizeImageForFormat(image, outputFormat);
+
+      success = ImageIO.write(dstImage, outputFormat, outputPath.toFile());
 
       if (!success) {
         throw new IOException("Could not write output image file: " + outputPath + ". Format '" + outputFormat
