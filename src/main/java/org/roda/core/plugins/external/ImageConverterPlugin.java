@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import javax.imageio.ImageIO;
 import javax.imageio.spi.IIORegistry;
 
 import org.roda.core.RodaCoreFactory;
@@ -63,7 +62,7 @@ public class ImageConverterPlugin<T extends IsRODAObject> extends AbstractConver
     System.out.println("ImageConverterPlugin initialized");
     LOGGER.info("ImageConverterPlugin initialized");
     // Ensure ImageIO plugins are registered
-    ImageIO.scanForPlugins();
+    // ImageIO.scanForPlugins();
     IIORegistry registry = IIORegistry.getDefaultInstance();
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.xwd.XWDImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.bmp.CURImageReaderSpi());
@@ -79,13 +78,11 @@ public class ImageConverterPlugin<T extends IsRODAObject> extends AbstractConver
     // com.twelvemonkeys.imageio.plugins.svg.SVGImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.sgi.SGIImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pnm.PNMImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pnm.PNMImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.pcx.PCXImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.dds.DDSImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.jpeg.JPEGImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.tiff.BigTIFFImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.psd.PSDImageReaderSpi());
-    registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.dcx.DCXImageReaderSpi());
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.dcx.DCXImageReaderSpi());
 
     registry.registerServiceProvider(new com.twelvemonkeys.imageio.plugins.jpeg.JPEGImageWriterSpi());
