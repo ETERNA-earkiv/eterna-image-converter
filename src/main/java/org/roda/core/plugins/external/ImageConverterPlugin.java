@@ -47,9 +47,9 @@ import org.apache.batik.transcoder.image.TIFFTranscoder;
  * Plugin for converting image formats
  */
 @SuppressWarnings("deprecation")
-public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugin<T> {
+public class ImageConverterPlugin<T extends IsRODAObject> extends AbstractConvertPlugin<T> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ImageConverter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ImageConverterPlugin.class);
 
   private static final String CONVERSION_PROFILE_PARAM_KEY = "parameter.conversion_profile";
 
@@ -79,14 +79,14 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
             .build());
   }
 
-  public ImageConverter() {
+  public ImageConverterPlugin() {
     super();
   }
 
   @Override
   public void init() throws PluginException {
-    System.out.println("ImageConverter initialized");
-    LOGGER.info("ImageConverter initialized");
+    System.out.println("ImageConverterPlugin initialized");
+    LOGGER.info("ImageConverterPlugin initialized");
     // Ensure ImageIO plugins are registered
     ImageIO.scanForPlugins();
     IIORegistry registry = IIORegistry.getDefaultInstance();
@@ -135,7 +135,7 @@ public class ImageConverter<T extends IsRODAObject> extends AbstractConvertPlugi
 
   @Override
   public Plugin<T> cloneMe() {
-    return new ImageConverter<T>();
+    return new ImageConverterPlugin<T>();
   }
 
   @Override
