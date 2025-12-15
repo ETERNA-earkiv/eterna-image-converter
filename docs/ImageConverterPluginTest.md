@@ -61,4 +61,4 @@ This test verifies the functionality of the `ImageConverterPlugin` in the ETERNA
 
 ## Summary
 
-This test ensures that the `ImageConverterPlugin` correctly converts eligible files to supported formats, excludes unsupported or already-converted files, and validates the results using both extension and MIME type. It is designed to be robust and extensible as the plugin evolves. 
+This test ensures that the `ImageConverterPlugin` correctly converts eligible files to supported formats, excludes unsupported or already-converted files, and validates the results using both extension and MIME type.

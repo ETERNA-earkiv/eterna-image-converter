@@ -3,26 +3,14 @@ Image Converter
 
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](LICENSE.md)
 
-A plugin for [ETERNA](https://github.com/ETERNA-earkiv/ETERNA) providing robust image format conversion for digital preservation workflows.
+A plugin for [ETERNA](https://github.com/ETERNA-earkiv/ETERNA) providing image format conversion for digital preservation workflows.
 
-## Table of Contents
+## Features
 
-- [Supported Formats](#supported-formats)
-- [Features](#features-v100)
-- [What Gets Tested](#what-gets-tested)
-- [Known Limitations](#known-limitations)
-- [Configuration](#configuration)
-- [Contributing](#contributing)
-- [License](#license)
-- [Future Improvements](#future-improvements)
-
-## Supported Formats
-
-- **Input:**
+- **Image format conversion**: Converts a wide range image formats to (`jpg`, `png`, `tiff`).
   - Most common raster image formats supported by Java ImageIO and TwelveMonkeys (e.g., BMP, PNG, TIFF, JPEG, GIF, PNM, PSD, etc.)
   - **SVG input is supported** and converted using Apache Batik (to PNG, JPG, or TIFF)
-- **Output:**
-  - `jpg`, `png`, `tiff`
+- **Lossy format normalization**: Includes color-space conversions, bit-depth down-sampling with dithering, and alpha channel removal. Explicit loading of first image from multi-image files (animated GIFs, ICO files with different dimensions).
 
 ### Output Format Quality Characteristics
 
@@ -30,42 +18,19 @@ A plugin for [ETERNA](https://github.com/ETERNA-earkiv/ETERNA) providing robust 
 - **PNG**: Lossless compression format well-suited for images with sharp lines, text, and graphics. It preserves image quality during compression and is a good choice for archival of digital art, logos, and screenshots.
 - **TIFF**: A flexible image format that can store images with lossless compression (or no compression at all). It is ideal for archival purposes because it preserves maximum image quality and supports metadata. Results in larger file sizes.
 
-## Features (v1.1.0)
+### Known Limitations
 
-- **Batch image format conversion**: Converts a wide range of raster image formats to preservation-friendly formats (`jpg`, `png`, `tiff`).
-- **SVG conversion**: Converts SVG and SVGZ images to supported raster formats using Batik.
-- **Automatic format detection**: Uses ImageIO for input detection and Siegfried for post-conversion format validation.
-- **Preservation representation creation**: Each conversion creates a new representation for the converted files.
-- **Lossy format normalization**: Includes color-space conversions, bit-depth down-sampling with dithering, and alpha channel removal for optimal preservation.
-- **Enhanced multi-image file handling**: Explicit loading of first image from multi-image files (animated GIFs, ICO files with different dimensions).
-- **Improved error handling**: More lenient image loading with better error recovery and logging.
-- **Format-specific properties management**: Uses ImageFormatProperties record for managing format-specific conversion properties.
-- **Unit tested**: Comprehensive test suite ensures correct conversion, exclusion, and validation logic.
+- **Duplicate/overwrite behavior**: If multiple files with the same base name are converted to the same extension, only one may survive in the output (due to base plugin logic). Use unique file names for best results.
+- **Quality degradation**: Some output formats don´t support all of the features of all input formats. Conversion can therefor lead to quality degradation.
+**For example:** 
+  - **Alpha channel preservation**: Files with transparency/alpha channels may lose their transparancy/Alpha channel if converted to a format that does not support it (e.g., JPEG)
+  - **Bit depth preservation**: Files with higher bit depth than the target format supports are downsampled and dithered into their output formats maximum bit depth.
+  - **Animation preservation**: Animated formats (e.g., GIF) only get their first frame converted into the output format.
 
-## What Gets Tested
+## Installation
 
-- Creation of AIP and representations
-- Ingestion of all sample files
-- Conversion for each supported output format
-- Exclusion of unsupported and already-converted files
-- Validation of output file extension and MIME type
-
-## Configuration
-
-Edit `src/main/resources/config/image-converter.properties` to customize input/output formats and plugin behavior.
-
-### Key Configuration Properties
-
-- `core.tools.image-converter.inputFormatExtensions`: Space-separated list of supported input file extensions
-- `core.tools.image-converter.outputFormats`: Space-separated list of supported output formats (`tiff`, `jpg`, `png`)
-- `core.tools.image-converter.excludedExtensions`: Space-separated list of file extensions to exclude from conversion (e.g., `cur pict ico dds pfm hdr`)
-- `core.tools.image-converter.inputFormatMimeTypes`: Supported MIME types for input files
-- `core.tools.image-converter.inputFormatPronoms`: Supported PRONOM identifiers for input files
-
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Download [image-converter.zip](http://github.com/ETERNA-earkiv/eterna-image-converter/releases/latest/download/image-converter.zip) and extract it into `/.roda/config/plugins/` and restart ETERNA.
 
 ## License
 
-This project is licensed under the LGPL v3 License. See [LICENSE.md](LICENSE.md) for details.
+See [LICENSE.md](LICENSE.md) for details.
