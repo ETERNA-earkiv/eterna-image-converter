@@ -26,6 +26,7 @@ import org.roda.core.data.v2.jobs.Report;
 import org.roda.core.index.IndexService;
 import org.roda.core.model.ModelService;
 import org.roda.core.plugins.Plugin;
+import org.roda.core.plugins.PluginException;
 import org.roda.core.plugins.base.conversion.AbstractConvertPlugin;
 import org.roda.core.storage.StorageService;
 import org.roda.core.util.CommandException;
@@ -175,12 +176,12 @@ public class ImageConverterPlugin<T extends IsRODAObject> extends AbstractConver
   }
 
   @Override
-  public Report beforeAllExecute(IndexService index, ModelService model, StorageService storage) {
+  public Report beforeAllExecute(IndexService index, ModelService model) throws PluginException {
     return new Report();
   }
 
   @Override
-  public Report afterAllExecute(IndexService index, ModelService model, StorageService storage) {
+  public Report afterAllExecute(IndexService index, ModelService model) throws PluginException {
     return new Report();
   }
 

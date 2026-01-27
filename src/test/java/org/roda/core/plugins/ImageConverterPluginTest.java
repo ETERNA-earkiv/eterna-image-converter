@@ -116,7 +116,7 @@ public class ImageConverterPluginTest {
 				null,
 				RodaConstants.AIP_TYPE_MIXED,
 				new Permissions(),
-				RodaConstants.ADMIN);
+				RodaConstants.ADMIN, null);
 
 		final String repId = IdUtils.createUUID();
 		rep = model.createRepresentation(aip.getId(), repId, true,
