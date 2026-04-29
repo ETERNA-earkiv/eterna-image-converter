@@ -8,8 +8,7 @@
     <format>dir</format>
     <format>zip</format>
   </formats>
-  <includeBaseDirectory>true</includeBaseDirectory>
-  <baseDirectory>image-converter</baseDirectory>
+  <includeBaseDirectory>false</includeBaseDirectory>
   <dependencySets>
     <dependencySet>
       <outputDirectory>/</outputDirectory>
