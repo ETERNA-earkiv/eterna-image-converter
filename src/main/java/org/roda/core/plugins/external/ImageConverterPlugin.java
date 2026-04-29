@@ -92,15 +92,14 @@ public class ImageConverterPlugin<T extends IsRODAObject> extends AbstractConver
 
   @Override
   public String getName() {
-    return "Image Converter";
+    return "Bildkonverterare";
   }
 
   @Override
   public String getDescription() {
-    return "Image format conversion plugin that supports a wide range of input and output formats. " +
-        "Uses the TwelveMonkeys ImageIO library to handle legacy and specialized image formats. " +
-        "Includes specialized SVG conversion support using Apache Batik transcoders. " +
-        "Ideal for digital preservation workflows and format migration.";
+    return "Plugin för konvertering av bildformat med stöd för ett brett urval av in- och utdataformat. " +
+        "Använder TwelveMonkeys ImageIO för att hantera äldre och specialiserade bildformat samt Apache Batik för SVG-konvertering. " +
+        "Passar för digitalt bevarandearbetsflöden och formatmigrering.";
   }
 
   @Override
