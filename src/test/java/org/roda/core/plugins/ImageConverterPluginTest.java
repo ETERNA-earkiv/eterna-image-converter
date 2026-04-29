@@ -86,7 +86,7 @@ public class ImageConverterPluginTest {
 		basePath = TestsHelper.createBaseTempDir(this.getClass(), true);
 
 		boolean deploySolr = true;
-		boolean deployLdap = true;
+		boolean deployLdap = false;
 		boolean deployFolderMonitor = true;
 		boolean deployOrchestrator = true;
 		boolean deployPluginManager = true;
@@ -116,7 +116,8 @@ public class ImageConverterPluginTest {
 				null,
 				RodaConstants.AIP_TYPE_MIXED,
 				new Permissions(),
-				RodaConstants.ADMIN);
+				RodaConstants.ADMIN,
+				null);
 
 		final String repId = IdUtils.createUUID();
 		rep = model.createRepresentation(aip.getId(), repId, true,

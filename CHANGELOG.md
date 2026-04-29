@@ -1,4 +1,14 @@
 # Changelog
+## [2.0.0]
+### Changed
+- Updated parent version from 0.4.1 to 1.0.0-alpha-SNAPSHOT (eterna v1-alpha)
+- Removed explicit `roda-core` version declaration, now managed by parent BOM
+- Updated `init()`, `beforeAllExecute()`, and `afterAllExecute()` signatures to match eterna v1 Plugin interface
+- Translated plugin name and description to Swedish
+
+### Breaking Changes
+- Incompatible with eterna 0.x — requires eterna 1.0.0-alpha-SNAPSHOT or later
+
 ## [1.1.0]
 ### Added
 - Lossy format normalization with color-space conversions, bit-depth down-sampling with dithering, and alpha channel removal

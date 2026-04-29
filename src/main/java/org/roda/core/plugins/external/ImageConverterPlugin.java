@@ -26,8 +26,8 @@ import org.roda.core.data.v2.jobs.Report;
 import org.roda.core.index.IndexService;
 import org.roda.core.model.ModelService;
 import org.roda.core.plugins.Plugin;
+import org.roda.core.plugins.PluginException;
 import org.roda.core.plugins.base.conversion.AbstractConvertPlugin;
-import org.roda.core.storage.StorageService;
 import org.roda.core.util.CommandException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +58,7 @@ public class ImageConverterPlugin<T extends IsRODAObject> extends AbstractConver
   }
 
   @Override
-  public void init() {
+  public void init() throws PluginException {
     System.out.println("ImageConverterPlugin initialized");
     LOGGER.info("ImageConverterPlugin initialized");
     // Ensure ImageIO plugins are registered
@@ -92,15 +92,14 @@ public class ImageConverterPlugin<T extends IsRODAObject> extends AbstractConver
 
   @Override
   public String getName() {
-    return "Image Converter";
+    return "Bildkonverterare";
   }
 
   @Override
   public String getDescription() {
-    return "Image format conversion plugin that supports a wide range of input and output formats. " +
-        "Uses the TwelveMonkeys ImageIO library to handle legacy and specialized image formats. " +
-        "Includes specialized SVG conversion support using Apache Batik transcoders. " +
-        "Ideal for digital preservation workflows and format migration.";
+    return "Plugin för konvertering av bildformat med stöd för ett brett urval av in- och utdataformat. " +
+        "Använder TwelveMonkeys ImageIO för att hantera äldre och specialiserade bildformat samt Apache Batik för SVG-konvertering. " +
+        "Passar för digitalt bevarandearbetsflöden och formatmigrering.";
   }
 
   @Override
@@ -175,12 +174,12 @@ public class ImageConverterPlugin<T extends IsRODAObject> extends AbstractConver
   }
 
   @Override
-  public Report beforeAllExecute(IndexService index, ModelService model, StorageService storage) {
+  public Report beforeAllExecute(IndexService index, ModelService model) throws PluginException {
     return new Report();
   }
 
   @Override
-  public Report afterAllExecute(IndexService index, ModelService model, StorageService storage) {
+  public Report afterAllExecute(IndexService index, ModelService model) throws PluginException {
     return new Report();
   }
 
